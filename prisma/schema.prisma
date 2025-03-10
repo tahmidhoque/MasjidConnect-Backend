@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(EDITOR)
+  masjidId      String
+  masjid        Masjid    @relation(fields: [masjidId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Masjid {
+  id              String    @id @default(cuid())
+  name            String
+  latitude        Float
+  longitude       Float
+  timezone        String
+  calculationMethod String   @default("MWL")
+  madhab          String    @default("Hanafi")
+  users           User[]
+  prayerTimes     PrayerTime[]
+  hadiths         Hadith[]
+  announcements   Announcement[]
+  screens         Screen[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model PrayerTime {
+  id            String    @id @default(cuid())
+  masjidId      String
+  masjid        Masjid    @relation(fields: [masjidId], references: [id])
+  date          DateTime
+  fajr          DateTime
+  fajrJamaat    DateTime
+  sunrise       DateTime?
+  zuhr          DateTime
+  zuhrJamaat    DateTime
+  asr           DateTime
+  asrJamaat     DateTime
+  maghrib       DateTime
+  maghribJamaat DateTime
+  isha          DateTime
+  ishaJamaat    DateTime
+  jummahKhutbah DateTime?
+  jummahJamaat  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([date, masjidId])
+}
+
+model Hadith {
+  id          String    @id @default(cuid())
+  masjidId    String
+  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  arabicText  String?
+  englishText String?
+  displayDate DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Announcement {
+  id          String    @id @default(cuid())
+  masjidId    String
+  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  message     String
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Screen {
+  id          String    @id @default(cuid())
+  masjidId    String
+  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  name        String
+  apiKey      String    @unique
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+} 
