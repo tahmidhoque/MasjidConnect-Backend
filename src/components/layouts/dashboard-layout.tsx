@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 import {
   Box,
   Drawer,
@@ -12,7 +14,9 @@ import {
   ListItemText,
   IconButton,
   Typography,
-  Divider,
+  Avatar,
+  Tooltip,
+  Badge,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -24,6 +28,7 @@ import {
   Schedule as ScheduleIcon,
   Notifications as NotificationsIcon,
   Menu as MenuIcon,
+  ExitToApp as LogoutIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 280;
@@ -35,6 +40,22 @@ const menuItems = [
     icon: <DashboardIcon />,
   },
   {
+    title: 'Prayer Times',
+    path: '/prayer-times',
+    icon: <ScheduleIcon />,
+  },
+  {
+    title: 'Masjid Details',
+    path: '/masjid',
+    icon: <MosqueIcon />,
+  },
+  {
+    title: 'Notifications',
+    path: '/notifications',
+    icon: <NotificationsIcon />,
+    badge: 3, // Example badge count
+  },
+  {
     title: 'General Settings',
     path: '/general-settings',
     icon: <SettingsIcon />,
@@ -43,21 +64,6 @@ const menuItems = [
     title: 'Profile',
     path: '/profile',
     icon: <PersonIcon />,
-  },
-  {
-    title: 'Masjid Details',
-    path: '/masjid',
-    icon: <MosqueIcon />,
-  },
-  {
-    title: 'Prayer Times',
-    path: '/prayer-times',
-    icon: <ScheduleIcon />,
-  },
-  {
-    title: 'Notifications',
-    path: '/notifications',
-    icon: <NotificationsIcon />,
   },
 ];
 
@@ -69,106 +75,195 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const pathname = usePathname();
+  const router = useRouter();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  return (
-    <Box sx={{ display: 'flex' }}>
+  const handleLogout = async () => {
+    try {
+      await signOut({ 
+        redirect: true,
+        callbackUrl: '/login?signOut=true'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      router.push('/login?signOut=true');
+    }
+  };
+
+  const drawer = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Logo and Brand */}
       <Box
-        component="nav"
         sx={{
-          width: { md: drawerWidth },
-          flexShrink: 0,
+          p: 3,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
         }}
       >
-        {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+        <Image
+          src="/logo.png"
+          alt="MasjidConnect"
+          width={40}
+          height={40}
+          style={{ borderRadius: '8px' }}
+        />
+        <Typography
+          variant="h6"
           sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-            },
+            fontWeight: 700,
+            background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.primary.light})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}
         >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" noWrap component="div" gutterBottom>
-              Masjid Admin
-            </Typography>
-            <List>
-              {menuItems.map((item) => (
-                <ListItem key={item.path} disablePadding>
-                  <ListItemButton
-                    component="a"
-                    href={item.path}
-                    selected={usePathname() === item.path}
-                  >
-                    <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.title} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
-
-        {/* Desktop drawer */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': {
-              width: drawerWidth,
-              boxSizing: 'border-box',
-              border: 'none',
-              borderRight: '1px solid rgba(0, 0, 0, 0.12)',
-            },
-          }}
-          open
-        >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="h6" noWrap component="div" gutterBottom>
-              Masjid Admin
-            </Typography>
-            <List>
-              {menuItems.map((item) => (
-                <ListItem key={item.path} disablePadding>
-                  <ListItemButton
-                    component="a"
-                    href={item.path}
-                    selected={usePathname() === item.path}
-                  >
-                    <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText primary={item.title} />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
+          MasjidConnect
+        </Typography>
       </Box>
+
+      {/* Navigation */}
+      <List sx={{ flex: 1, px: 2 }}>
+        {menuItems.map((item) => (
+          <ListItem key={item.path} disablePadding sx={{ mb: 1 }}>
+            <ListItemButton
+              component="a"
+              href={item.path}
+              selected={pathname === item.path}
+              sx={{
+                borderRadius: 2,
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.15)',
+                  },
+                },
+              }}
+            >
+              <ListItemIcon>
+                {item.badge ? (
+                  <Badge badgeContent={item.badge} color="error">
+                    {item.icon}
+                  </Badge>
+                ) : (
+                  item.icon
+                )}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.title}
+                sx={{
+                  '& .MuiListItemText-primary': {
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  },
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+
+      {/* User Profile Section */}
+      <Box
+        sx={{
+          p: 2,
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        <Avatar
+          sx={{
+            bgcolor: theme.palette.secondary.main,
+            width: 40,
+            height: 40,
+          }}
+        >
+          A
+        </Avatar>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 600 }}>
+            Admin User
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+            Oxford Mosque
+          </Typography>
+        </Box>
+        <Tooltip title="Logout">
+          <IconButton 
+            size="small" 
+            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
+            onClick={handleLogout}
+          >
+            <LogoutIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex' }}>
+      {/* Mobile drawer */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          display: { xs: 'block', md: 'none' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            bgcolor: theme.palette.primary.main,
+          },
+        }}
+      >
+        {drawer}
+      </Drawer>
+
+      {/* Desktop drawer */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            bgcolor: theme.palette.primary.main,
+            borderRight: 'none',
+          },
+          width: drawerWidth,
+          flexShrink: 0,
+        }}
+        open
+      >
+        {drawer}
+      </Drawer>
 
       {/* Main content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, md: 3 },
-          backgroundColor: (theme) => theme.palette.grey[100],
+          p: { xs: 2, md: 4 },
+          bgcolor: theme.palette.background.default,
           minHeight: '100vh',
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          width: '100%',
+          position: 'relative',
         }}
       >
         {/* Mobile header */}
-        <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 2 }}>
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            mb: 2,
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -177,6 +272,9 @@ export default function DashboardLayout({
           >
             <MenuIcon />
           </IconButton>
+          <Typography variant="h6" noWrap component="div">
+            MasjidConnect
+          </Typography>
         </Box>
 
         {/* Page content */}
