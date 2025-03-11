@@ -14,8 +14,10 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String    @unique
-  password      String
-  role          Role      @default(EDITOR)
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(USER)
   masjidId      String
   masjid        Masjid    @relation(fields: [masjidId], references: [id])
   createdAt     DateTime  @default(now())
@@ -37,6 +39,21 @@ model Masjid {
   screens         Screen[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+
+model Mosque {
+  id          String   @id @default(cuid())
+  name        String
+  address     String
+  city        String
+  state       String
+  country     String
+  postalCode  String?
+  phone       String?
+  email       String?
+  website     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model PrayerTime {
@@ -99,6 +116,6 @@ model Screen {
 }
 
 enum Role {
+  USER
   ADMIN
-  EDITOR
 } 
