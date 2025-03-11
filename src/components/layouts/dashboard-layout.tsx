@@ -29,6 +29,7 @@ import {
   Notifications as NotificationsIcon,
   Menu as MenuIcon,
   ExitToApp as LogoutIcon,
+  ScreenShare as ScreenIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 280;
@@ -48,6 +49,11 @@ const menuItems = [
     title: 'Masjid Details',
     path: '/masjid',
     icon: <MosqueIcon />,
+  },
+  {
+    title: 'Display Screens',
+    path: '/screens',
+    icon: <ScreenIcon />,
   },
   {
     title: 'Notifications',

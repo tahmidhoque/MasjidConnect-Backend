@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { hash } from 'bcryptjs'
+import { randomBytes } from 'crypto'
 
 const prisma = new PrismaClient()
 
@@ -84,15 +85,41 @@ async function main() {
     },
   })
 
-  // Create a display screen
-  const screen = await prisma.screen.create({
-    data: {
-      masjidId: masjid.id,
-      name: 'Main Prayer Hall Screen',
-      apiKey: 'test-api-key-123',
-      isActive: true,
-    },
-  })
+  // Create display screens
+  const screens = await Promise.all([
+    prisma.screen.create({
+      data: {
+        masjidId: masjid.id,
+        name: 'Main Prayer Hall Screen',
+        apiKey: randomBytes(32).toString('hex'),
+        status: 'OFFLINE',
+        location: 'Main Prayer Hall',
+        orientation: 'LANDSCAPE',
+        contentConfig: {
+          showPrayerTimes: true,
+          showAnnouncements: true,
+          showHadith: true,
+          refreshInterval: 60,
+        },
+      },
+    }),
+    prisma.screen.create({
+      data: {
+        masjidId: masjid.id,
+        name: 'Entrance Display',
+        apiKey: randomBytes(32).toString('hex'),
+        status: 'OFFLINE',
+        location: 'Main Entrance',
+        orientation: 'PORTRAIT',
+        contentConfig: {
+          showPrayerTimes: true,
+          showAnnouncements: true,
+          showHadith: false,
+          refreshInterval: 30,
+        },
+      },
+    }),
+  ])
 
   console.log('Seed data created successfully!')
   console.log('Admin credentials:')

@@ -109,13 +109,49 @@ model Announcement {
 
 model Screen {
   id          String    @id @default(cuid())
-  masjidId    String
-  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  masjidId    String?
+  masjid      Masjid?   @relation(fields: [masjidId], references: [id])
   name        String
-  apiKey      String    @unique
+  apiKey      String?   @unique
+  pairingCode String?   @unique
+  pairingCodeExpiry DateTime?
+  lastSeen    DateTime?
+  status      ScreenStatus @default(OFFLINE)
+  deviceType  String?
+  location    String?
+  orientation ScreenOrientation @default(LANDSCAPE)
+  contentConfig Json?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  contentOverrides ScreenContentOverride[]
+
+  @@index([pairingCode])
+  @@index([status])
+}
+
+model ScreenContentOverride {
+  id          String    @id @default(cuid())
+  screenId    String
+  screen      Screen    @relation(fields: [screenId], references: [id])
+  contentType String    // e.g., "PRAYER_TIMES", "ANNOUNCEMENTS", "EVENTS"
+  enabled     Boolean   @default(true)
+  config      Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([screenId, contentType])
+}
+
+enum ScreenStatus {
+  ONLINE
+  OFFLINE
+  PAIRING
+}
+
+enum ScreenOrientation {
+  LANDSCAPE
+  PORTRAIT
 }
 
 enum Role {

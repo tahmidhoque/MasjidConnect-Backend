@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(req: Request) {
+  try {
+    const { pairingCode } = await req.json();
+    if (!pairingCode) {
+      return NextResponse.json(
+        { error: 'Pairing code is required' },
+        { status: 400 }
+      );
+    }
+
+    // Find screen with this pairing code
+    const screen = await prisma.screen.findFirst({
+      where: {
+        pairingCode,
+        pairingCodeExpiry: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!screen) {
+      return NextResponse.json(
+        { error: 'Invalid or expired pairing code' },
+        { status: 404 }
+      );
+    }
+
+    // If the screen has been paired (has a masjidId and apiKey)
+    if (screen.masjidId && screen.apiKey && screen.isActive) {
+      return NextResponse.json({
+        paired: true,
+        apiKey: screen.apiKey,
+        masjidId: screen.masjidId,
+      });
+    }
+
+    // Not yet paired
+    return NextResponse.json({
+      paired: false,
+      checkAgainIn: 5000, // Suggest checking again in 5 seconds
+    });
+  } catch (error) {
+    console.error('Error checking pairing status:', error);
+    return NextResponse.json(
+      { error: 'Failed to check pairing status' },
+      { status: 500 }
+    );
+  }
+} 
