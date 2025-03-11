@@ -1,89 +1,96 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "./prisma";
-import { compare } from "bcryptjs";
+import { NextAuthOptions } from 'next-auth'
+import CredentialsProvider from "next-auth/providers/credentials"
+import { compare } from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
+import { User } from '@prisma/client'
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  debug: false,
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
-    signIn: "/login",
+    signIn: '/login',
+    error: '/login',
+    signOut: '/login?signOut=true',
   },
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null;
+          throw new Error('Please enter your email and password')
         }
 
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
           },
-        });
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            password: true,
+            role: true,
+            masjidId: true,
+          },
+        })
 
-        if (!user) {
-          return null;
+        if (!user?.password) {
+          throw new Error('Invalid email or password')
         }
 
-        const isPasswordValid = await compare(credentials.password, user.password);
+        const isPasswordValid = await compare(credentials.password, user.password)
 
         if (!isPasswordValid) {
-          return null;
+          throw new Error('Invalid email or password')
         }
 
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          name: user.name || '',
           role: user.role,
           masjidId: user.masjidId,
-        };
+        }
       },
     }),
   ],
   callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id;
-        session.user.name = token.name;
-        session.user.email = token.email;
-        session.user.role = token.role;
-        session.user.masjidId = token.masjidId;
-      }
-      return session;
-    },
     async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email,
-        },
-      });
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user?.id;
-          token.role = user?.role;
-          token.masjidId = user?.masjidId;
-        }
-        return token;
+      if (user) {
+        token.id = user.id
+        token.role = user.role
+        token.masjidId = user.masjidId
       }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role,
-        masjidId: dbUser.masjidId,
-      };
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string
+        session.user.role = token.role as User['role']
+        session.user.masjidId = token.masjidId as string
+      }
+      return session
+    },
+    async redirect({ url, baseUrl }) {
+      // Always redirect to dashboard after successful login
+      if (url.includes('/login')) {
+        return `${baseUrl}/dashboard`
+      }
+      
+      // If it's a relative URL, make it absolute
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`
+      }
+      
+      // Default to the base URL
+      return baseUrl
     },
   },
-}; 
+} 

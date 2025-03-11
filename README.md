@@ -76,3 +76,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## TODO
+
+- Review and strengthen ESLint configurations: Some ESLint rules have been temporarily relaxed for production deployment. These should be revisited and properly addressed in future updates.
+- Address unused variables and improve error handling across components
+- Fix React Hook usage in dashboard layout
+- Implement proper error logging strategy

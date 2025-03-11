@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,7 +26,7 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -62,6 +62,74 @@ export default function LoginPage() {
   }
 
   return (
+    <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
+      <Controller
+        name="email"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            margin="normal"
+            fullWidth
+            label="Email"
+            type="email"
+            error={!!errors.email}
+            helperText={errors.email?.message}
+            autoComplete="email"
+            disabled={isLoading}
+          />
+        )}
+      />
+
+      <Controller
+        name="password"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            margin="normal"
+            fullWidth
+            label="Password"
+            type="password"
+            error={!!errors.password}
+            helperText={errors.password?.message}
+            autoComplete="current-password"
+            disabled={isLoading}
+          />
+        )}
+      />
+
+      {error && (
+        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={isLoading}
+          sx={{ minWidth: 100 }}
+        >
+          {isLoading ? <CircularProgress size={24} /> : 'LOGIN'}
+        </Button>
+
+        <MuiLink
+          component={Link}
+          href="/forgot-password"
+          variant="body2"
+          color="primary"
+        >
+          Forgot Password?
+        </MuiLink>
+      </Box>
+    </Box>
+  )
+}
+
+export default function LoginPage() {
+  return (
     <Box
       sx={{
         minHeight: '100vh',
@@ -96,69 +164,9 @@ export default function LoginPage() {
             </MuiLink>
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ width: '100%' }}>
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="normal"
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                  autoComplete="email"
-                  disabled={isLoading}
-                />
-              )}
-            />
-
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  margin="normal"
-                  fullWidth
-                  label="Password"
-                  type="password"
-                  error={!!errors.password}
-                  helperText={errors.password?.message}
-                  autoComplete="current-password"
-                  disabled={isLoading}
-                />
-              )}
-            />
-
-            {error && (
-              <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={isLoading}
-                sx={{ minWidth: 100 }}
-              >
-                {isLoading ? <CircularProgress size={24} /> : 'LOGIN'}
-              </Button>
-
-              <MuiLink
-                component={Link}
-                href="/forgot-password"
-                variant="body2"
-                color="primary"
-              >
-                Forgot Password?
-              </MuiLink>
-            </Box>
-          </Box>
+          <Suspense fallback={<CircularProgress />}>
+            <LoginForm />
+          </Suspense>
 
           <Typography
             variant="body2"

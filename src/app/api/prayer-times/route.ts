@@ -1,0 +1,129 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.masjidId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const prayerTimes = await prisma.prayerTime.findMany({
+      where: {
+        masjidId: session.user.masjidId,
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+    return NextResponse.json(prayerTimes);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch prayer times' }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.masjidId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const data = await req.json();
+    
+    // If it's a bulk upload (CSV), handle multiple records
+    if (Array.isArray(data)) {
+      // Delete existing records for the dates being uploaded to avoid duplicates
+      const dates = data.map(item => new Date(item.date));
+      await prisma.prayerTime.deleteMany({
+        where: {
+          date: {
+            in: dates,
+          },
+          masjidId: session.user.masjidId,
+        },
+      });
+
+      // Insert new records
+      const prayerTimes = await prisma.prayerTime.createMany({
+        data: data.map(item => ({
+          masjidId: session.user.masjidId,
+          date: new Date(item.date),
+          fajr: item.fajr,
+          sunrise: item.sunrise,
+          zuhr: item.zuhr,
+          asr: item.asr,
+          maghrib: item.maghrib,
+          isha: item.isha,
+          fajrJamaat: item.fajrJamaat,
+          zuhrJamaat: item.zuhrJamaat,
+          asrJamaat: item.asrJamaat,
+          maghribJamaat: item.maghribJamaat,
+          ishaJamaat: item.ishaJamaat,
+          jummahKhutbah: item.jummahKhutbah,
+          jummahJamaat: item.jummahJamaat,
+          isManuallySet: true,
+          source: 'CSV',
+        })),
+      });
+      return NextResponse.json(prayerTimes);
+    }
+    
+    // Single record insert/update
+    const prayerTime = await prisma.prayerTime.upsert({
+      where: {
+        date_masjidId: {
+          date: new Date(data.date),
+          masjidId: session.user.masjidId,
+        },
+      },
+      update: {
+        ...data,
+        date: new Date(data.date),
+        masjidId: session.user.masjidId,
+        isManuallySet: true,
+      },
+      create: {
+        ...data,
+        date: new Date(data.date),
+        masjidId: session.user.masjidId,
+        isManuallySet: true,
+      },
+    });
+    return NextResponse.json(prayerTime);
+  } catch (error) {
+    console.error('Error saving prayer times:', error);
+    return NextResponse.json({ error: 'Failed to save prayer times' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.masjidId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get('date');
+    
+    if (!date) {
+      return NextResponse.json({ error: 'Date is required' }, { status: 400 });
+    }
+
+    await prisma.prayerTime.delete({
+      where: {
+        date_masjidId: {
+          date: new Date(date),
+          masjidId: session.user.masjidId,
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to delete prayer time' }, { status: 500 });
+  }
+} 
