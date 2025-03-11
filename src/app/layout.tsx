@@ -1,14 +1,13 @@
-import { Inter } from "next/font/google"
+import { Inter } from 'next/font/google';
+import { Providers } from './providers';
 import "./globals.css"
-import { ClientProvider } from "@/components/providers/client-provider"
-import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Metadata } from 'next'
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'MasjidConnect',
-  description: 'Connecting your Masjid community',
+export const metadata = {
+  title: 'MasjidConnect - Smart Digital Solutions for Mosques',
+  description: 'Empowering mosques with smart digital solutions to enhance communication, engagement, and accessibility for communities across the UK.',
   manifest: '/manifest.json',
   icons: {
     apple: '/icon.png',
@@ -19,7 +18,7 @@ export const metadata: Metadata = {
     initialScale: 1,
     maximumScale: 1,
   },
-}
+};
 
 export default function RootLayout({
   children,
@@ -29,11 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ClientProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
-        </ClientProvider>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
