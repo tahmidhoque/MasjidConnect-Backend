@@ -1,73 +1,78 @@
-# Masjid Admin Backend
+# Masjid Admin Dashboard
 
-A centralized backend system for managing multiple digital masjid displays.
+A modern admin dashboard for managing masjid (mosque) operations, built with Next.js 14, TypeScript, and Material UI.
 
 ## Features
 
-- Multi-masjid support
-- Prayer times management
-- Hadith display management
-- Announcements management
-- User authentication and authorization
-- Screen configuration management
-
-## Tech Stack
-
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- Prisma (PostgreSQL)
-- NextAuth.js
-- React Query
-- React Hook Form
-- Zod
+- 🔐 Secure authentication with NextAuth.js
+- 🎨 Modern UI with Material UI components
+- 🚀 Server-side rendering with Next.js 14
+- 📱 Responsive design for all devices
+- 🔄 Real-time data updates
+- 🛡️ TypeScript for type safety
+- 🎯 Clean and maintainable code structure
 
 ## Getting Started
 
-1. Clone the repository
+### Prerequisites
+
+- Node.js 18+ 
+- PostgreSQL database
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/masjid-admin.git
+cd masjid-admin
+```
+
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+# or
+yarn install
+```
+
 3. Set up environment variables:
-   ```bash
-   cp .env.example .env.local
-   ```
+```bash
+cp .env.example .env
+```
+Then edit `.env` with your configuration.
+
 4. Set up the database:
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   ```
-5. Run the development server:
-   ```bash
-   npm run dev
-   ```
+```bash
+npx prisma migrate dev
+npx prisma db seed
+```
+
+5. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js app router pages
-├── components/            # React components
-├── lib/                   # Utility functions and configurations
-├── prisma/               # Database schema and migrations
-└── types/                # TypeScript type definitions
+├── app/              # Next.js app directory
+│   ├── api/         # API routes
+│   ├── dashboard/   # Dashboard pages
+│   └── login/       # Authentication pages
+├── components/       # Reusable components
+├── lib/             # Utility functions
+└── types/           # TypeScript type definitions
 ```
 
-## Environment Variables
+## Contributing
 
-Create a `.env.local` file with the following variables:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-```env
-DATABASE_URL="postgresql://..."
-NEXTAUTH_SECRET="your-secret"
-NEXTAUTH_URL="http://localhost:3000"
-```
+## License
 
-## Development
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run prisma:studio` - Open Prisma Studio
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
