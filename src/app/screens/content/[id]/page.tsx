@@ -161,7 +161,10 @@ function SortableItem({ item, onDelete }: SortableItemProps) {
     <Card
       ref={setNodeRef}
       style={style}
-      sx={{ mb: 2 }}
+      sx={{ 
+        mb: 2,
+        borderRadius: 1,
+      }}
     >
       <CardContent
         sx={{
@@ -195,6 +198,7 @@ function SortableItem({ item, onDelete }: SortableItemProps) {
           sx={{ 
             height: '24px',
             bgcolor: 'action.hover',
+            borderRadius: 1,
             '& .MuiChip-label': { px: 1, fontSize: '0.75rem' },
             '& .MuiChip-icon': { ml: 0.5 }
           }}
@@ -226,6 +230,7 @@ function ContentTypeTile({ type, onClick }: ContentTypeTileProps) {
         gap: 2,
         cursor: 'pointer',
         transition: 'all 0.2s',
+        borderRadius: 1,
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: 4,
@@ -545,6 +550,11 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         onClose={handleCloseModals}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+          }
+        }}
       >
         <DialogTitle>
           Choose Content Type
@@ -572,6 +582,11 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         onClose={handleCloseModals}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 1,
+          }
+        }}
       >
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
