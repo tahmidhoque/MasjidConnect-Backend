@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -12,12 +12,15 @@ import {
   CardContent,
   IconButton,
   Button,
+  TextField,
+  Stack,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
   Delete as DeleteIcon,
   DragIndicator as DragIcon,
 } from '@mui/icons-material';
+import { useContentSchedules } from '@/lib/hooks/use-content-schedules';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -52,15 +55,30 @@ interface PlaylistSlide {
   duration: number;
 }
 
-export default function PlaylistEdit({ params }: { params: { id: string } }) {
+export default function PlaylistEdit({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   const router = useRouter();
-  const [value, setValue] = useState(3); // Playlist Slides tab
+  const [value, setValue] = useState(0); // Start with General settings tab
+  const [name, setName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [slides, setSlides] = useState<PlaylistSlide[]>([
     { id: '1', type: 'Verse / Hadith of the day', subtype: 'Verse of the day', duration: 20 },
     { id: '2', type: 'Next prayer', subtype: '', duration: 20 },
     { id: '3', type: 'Verse / Hadith of the day', subtype: 'Hadith of the day', duration: 20 },
     { id: '4', type: 'App download', subtype: '', duration: 20 },
   ]);
+  const { schedules, updateSchedule } = useContentSchedules();
+
+  // Find the current schedule
+  const currentSchedule = schedules.find(s => s.id === resolvedParams.id);
+
+  // Set initial name when schedule is loaded
+  useEffect(() => {
+    if (currentSchedule) {
+      setName(currentSchedule.name);
+    }
+  }, [currentSchedule]);
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
@@ -70,42 +88,81 @@ export default function PlaylistEdit({ params }: { params: { id: string } }) {
     setSlides(slides.filter(slide => slide.id !== id));
   };
 
+  const handleSave = async () => {
+    if (!name.trim()) {
+      setSaveError('Name is required');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await updateSchedule(resolvedParams.id, {
+        name: name.trim(),
+      });
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <Box sx={{ width: '100%', p: 3 }}>
-      {/* Validation Alert */}
-      <Alert 
-        severity="info" 
-        sx={{ mb: 3 }}
-        action={
-          <Button color="inherit" size="small">
-            Validate my account
-          </Button>
-        }
-      >
-        We need to ensure that you are authorised by the mosque. Having a validated account will unlock more features and solutions insha'a Allah.
-      </Alert>
-
       <Typography variant="h5" gutterBottom>
-        Playlist
+        {currentSchedule?.name || 'Loading...'}
       </Typography>
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>
-          <Tab label="Details" />
           <Tab label="General settings" />
-          <Tab label="Colors" />
-          <Tab label="Playlist Slides" />
-          <Tab label="Playlist Schedule" />
+          <Tab label="Schedule Slides" />
         </Tabs>
       </Box>
 
-      {/* Playlist Slides */}
-      <TabPanel value={value} index={3}>
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          You are using the free version of Masjidbox Screens, on this version only a maximum of 5 free slides will be displayed.
-        </Alert>
+      {/* General Settings */}
+      <TabPanel value={value} index={0}>
+        <Card>
+          <CardContent>
+            <Stack spacing={3}>
+              <Typography variant="h6">
+                General Settings
+              </Typography>
 
+              {saveError && (
+                <Alert severity="error" onClose={() => setSaveError(null)}>
+                  {saveError}
+                </Alert>
+              )}
+
+              <TextField
+                label="Schedule Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                fullWidth
+                required
+                error={!name.trim()}
+                helperText={!name.trim() ? 'Name is required' : ''}
+              />
+
+              <Box>
+                <Button
+                  variant="contained"
+                  onClick={handleSave}
+                  disabled={isSaving || !name.trim()}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      </TabPanel>
+
+      {/* Playlist Slides */}
+      <TabPanel value={value} index={1}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {slides.map((slide, index) => (
             <Card key={slide.id}>
