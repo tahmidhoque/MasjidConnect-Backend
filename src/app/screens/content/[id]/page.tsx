@@ -26,11 +26,8 @@ import {
   ListItemIcon,
   ListItemButton,
   Checkbox,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
+  Grid,
+  Paper,
   Divider,
 } from '@mui/material';
 import {
@@ -43,6 +40,7 @@ import {
   Announcement as AnnouncementIcon,
   MenuBook as VerseIcon,
   Code as CustomIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
 import { useContentSchedules, ContentScheduleItem } from '@/lib/hooks/use-content-schedules';
 import {
@@ -111,15 +109,31 @@ function TabPanel(props: TabPanelProps) {
 function getContentTypeIcon(type: string) {
   switch (type) {
     case ContentType.VERSE_HADITH:
-      return <VerseIcon />;
+      return <VerseIcon sx={{ fontSize: 40 }} />;
     case ContentType.ANNOUNCEMENT:
-      return <AnnouncementIcon />;
+      return <AnnouncementIcon sx={{ fontSize: 40 }} />;
     case ContentType.EVENT:
-      return <EventIcon />;
+      return <EventIcon sx={{ fontSize: 40 }} />;
     case ContentType.CUSTOM:
-      return <CustomIcon />;
+      return <CustomIcon sx={{ fontSize: 40 }} />;
     default:
-      return <CustomIcon />;
+      return <CustomIcon sx={{ fontSize: 40 }} />;
+  }
+}
+
+// Get content type display name
+function getContentTypeName(type: string): string {
+  switch (type) {
+    case ContentType.VERSE_HADITH:
+      return 'Verse / Hadith';
+    case ContentType.ANNOUNCEMENT:
+      return 'Announcement';
+    case ContentType.EVENT:
+      return 'Event';
+    case ContentType.CUSTOM:
+      return 'Custom';
+    default:
+      return type.replace('_', ' ');
   }
 }
 
@@ -194,6 +208,39 @@ function SortableItem({ item, onDelete }: SortableItemProps) {
   );
 }
 
+// Content type tile component
+interface ContentTypeTileProps {
+  type: ContentType;
+  onClick: () => void;
+}
+
+function ContentTypeTile({ type, onClick }: ContentTypeTileProps) {
+  return (
+    <Paper
+      elevation={2}
+      sx={{
+        p: 3,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        '&:hover': {
+          transform: 'translateY(-4px)',
+          boxShadow: 4,
+        },
+      }}
+      onClick={onClick}
+    >
+      {getContentTypeIcon(type)}
+      <Typography variant="body1" align="center">
+        {getContentTypeName(type)}
+      </Typography>
+    </Paper>
+  );
+}
+
 export default function PlaylistEdit({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const router = useRouter();
@@ -206,10 +253,11 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   const { schedules, updateSchedule } = useContentSchedules();
 
   // State for content item selector
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+  const [isItemsModalOpen, setIsItemsModalOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<ContentType | null>(null);
   const [availableContentItems, setAvailableContentItems] = useState<ContentItem[]>([]);
   const [selectedContentItems, setSelectedContentItems] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<string>('ALL');
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -222,10 +270,10 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   // Find the current schedule
   const currentSchedule = schedules.find(s => s.id === resolvedParams.id);
 
-  // Filter available content items
-  const filteredContentItems = filterType === 'ALL'
-    ? availableContentItems
-    : availableContentItems.filter(item => item.type === filterType);
+  // Filter available content items by selected type
+  const filteredContentItems = selectedType 
+    ? availableContentItems.filter(item => item.type === selectedType)
+    : [];
 
   // Set initial name and items when schedule is loaded
   useEffect(() => {
@@ -240,7 +288,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     setIsLoading(true);
     try {
       const items = await getContentItems();
-      setAvailableContentItems(items);
+      setAvailableContentItems(items as unknown as ContentItem[]);
     } catch (error) {
       console.error('Error fetching content items:', error);
     } finally {
@@ -318,15 +366,26 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   };
 
   // Content selector modal handlers
-  const handleOpenAddModal = () => {
-    fetchContentItems();
-    setSelectedContentItems([]);
-    setFilterType('ALL');
-    setIsModalOpen(true);
+  const handleOpenTypeModal = () => {
+    setIsTypeModalOpen(true);
   };
 
-  const handleCloseAddModal = () => {
-    setIsModalOpen(false);
+  const handleTypeSelection = (type: ContentType) => {
+    setSelectedType(type);
+    setSelectedContentItems([]);
+    fetchContentItems();
+    setIsTypeModalOpen(false);
+    setIsItemsModalOpen(true);
+  };
+
+  const handleBackToTypes = () => {
+    setIsItemsModalOpen(false);
+    setIsTypeModalOpen(true);
+  };
+
+  const handleCloseModals = () => {
+    setIsTypeModalOpen(false);
+    setIsItemsModalOpen(false);
   };
 
   const handleToggleContentItem = (itemId: string) => {
@@ -335,10 +394,6 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         ? prev.filter(id => id !== itemId)
         : [...prev, itemId]
     );
-  };
-
-  const handleFilterChange = (event: SelectChangeEvent) => {
-    setFilterType(event.target.value);
   };
 
   const handleAddContentItems = () => {
@@ -354,7 +409,16 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     });
     
     setScheduleItems([...scheduleItems, ...newItems]);
-    setIsModalOpen(false);
+    setIsItemsModalOpen(false);
+  };
+
+  const handleCreateNewItem = () => {
+    if (selectedType) {
+      // Navigate to the appropriate content creation page based on type
+      const route = `/screens/content/create/${selectedType.toLowerCase()}`;
+      // For now, show a message
+      alert(`Would navigate to: ${route}\nThis functionality will be implemented next.`);
+    }
   };
 
   return (
@@ -465,7 +529,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                   variant="outlined"
                   fullWidth
                   startIcon={<AddIcon />}
-                  onClick={handleOpenAddModal}
+                  onClick={handleOpenTypeModal}
                 >
                   Add Content Items
                 </Button>
@@ -475,46 +539,77 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         </Card>
       </TabPanel>
 
-      {/* Add Content Items Modal */}
+      {/* Content Type Selection Modal */}
       <Dialog
-        open={isModalOpen}
-        onClose={handleCloseAddModal}
+        open={isTypeModalOpen}
+        onClose={handleCloseModals}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>
-          Add Content Items
+          Choose Content Type
         </DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ my: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel id="filter-type-label">Filter by Type</InputLabel>
-              <Select
-                labelId="filter-type-label"
-                value={filterType}
-                onChange={handleFilterChange}
-                label="Filter by Type"
+          <Grid container spacing={3} sx={{ py: 2 }}>
+            {Object.values(ContentType).map((type) => (
+              <Grid item xs={6} key={type}>
+                <ContentTypeTile 
+                  type={type} 
+                  onClick={() => handleTypeSelection(type)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModals}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Content Items Selection Modal */}
+      <Dialog
+        open={isItemsModalOpen}
+        onClose={handleCloseModals}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton 
+              edge="start" 
+              color="inherit" 
+              onClick={handleBackToTypes}
+              sx={{ mr: 1 }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            {selectedType && getContentTypeName(selectedType)}
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ my: 2 }}>
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : filteredContentItems.length === 0 ? (
+              <Alert 
+                severity="info" 
+                action={
+                  <Button 
+                    color="inherit" 
+                    size="small" 
+                    onClick={handleCreateNewItem}
+                  >
+                    Create New
+                  </Button>
+                }
               >
-                <MenuItem value="ALL">All Types</MenuItem>
-                {Object.values(ContentType).map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type.replace('_', ' ')}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
-              {isLoading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                  <CircularProgress />
-                </Box>
-              ) : filteredContentItems.length === 0 ? (
-                <Alert severity="info">
-                  No content items found. Create some content items first.
-                </Alert>
-              ) : (
-                <List sx={{ width: '100%' }}>
+                No {selectedType && getContentTypeName(selectedType)} content items found.
+              </Alert>
+            ) : (
+              <>
+                <List sx={{ width: '100%', maxHeight: '350px', overflow: 'auto' }}>
                   {filteredContentItems.map((item) => (
                     <div key={item.id}>
                       <ListItem disablePadding>
@@ -527,12 +622,9 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                               disableRipple
                             />
                           </ListItemIcon>
-                          <ListItemIcon>
-                            {getContentTypeIcon(item.type)}
-                          </ListItemIcon>
                           <ListItemText 
                             primary={item.title}
-                            secondary={`${item.type.replace('_', ' ')} - ${item.duration}s`}
+                            secondary={`Duration: ${item.duration}s`}
                           />
                         </ListItemButton>
                       </ListItem>
@@ -540,12 +632,21 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                     </div>
                   ))}
                 </List>
-              )}
-            </Box>
-          </Stack>
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<AddIcon />}
+                    onClick={handleCreateNewItem}
+                  >
+                    Create New {selectedType && getContentTypeName(selectedType)}
+                  </Button>
+                </Box>
+              </>
+            )}
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddModal}>Cancel</Button>
+          <Button onClick={handleCloseModals}>Cancel</Button>
           <Button 
             onClick={handleAddContentItems} 
             variant="contained"
