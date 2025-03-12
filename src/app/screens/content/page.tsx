@@ -84,6 +84,9 @@ function ContentManagementContent() {
     createSchedule
   } = useContentSchedules();
 
+  // Add a title at the top of the page
+  const pageTitle = "Content Management";
+
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
@@ -205,6 +208,11 @@ function ContentManagementContent() {
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
+      {/* Page Title */}
+      <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 'bold' }}>
+        {pageTitle}
+      </Typography>
+
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>

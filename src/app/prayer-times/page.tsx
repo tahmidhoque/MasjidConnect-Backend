@@ -30,6 +30,8 @@ import {
   MenuItem,
   Grid,
   AlertTitle,
+  Divider,
+  Box as MuiBox,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Close as CloseIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { format, parse } from 'date-fns';
@@ -155,6 +157,10 @@ export default function PrayerTimesAdmin() {
   const [selectedTime, setSelectedTime] = useState<PrayerTime | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
+  
+  // Add a page title
+  const pageTitle = "Prayer Times";
   
   // Calculation settings
   const [calculationSettings, setCalculationSettings] = useState({
@@ -186,7 +192,7 @@ export default function PrayerTimesAdmin() {
       const data = await response.json();
       setPrayerTimes(data);
     } catch (err) {
-      setError('Failed to load prayer times');
+      setFatalError('Failed to load prayer times');
     }
   };
 
@@ -363,219 +369,298 @@ export default function PrayerTimesAdmin() {
     }
   };
 
-  return (
-    <Box>
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
-            Prayer Times Management
-          </Typography>
-
-          <Tabs 
-            value={activeTab} 
-            onChange={handleTabChange}
-            sx={{ 
-              borderBottom: 1, 
-              borderColor: 'divider',
-              mb: 3
-            }}
+  // Display error message if there is an error
+  if (fatalError) {
+    return (
+      <Box sx={{ width: '100%', p: 3 }}>
+        {/* Page Title */}
+        <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 'bold' }}>
+          {pageTitle}
+        </Typography>
+        
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <Typography variant="h6">Error</Typography>
+          <Typography variant="body2">{fatalError}</Typography>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outlined" 
+            sx={{ mt: 2 }}
           >
-            <Tab label="Calculate Times" />
-            <Tab label="Upload CSV" />
-            <Tab label="View/Edit Times" />
-          </Tabs>
+            Retry
+          </Button>
+        </Alert>
+      </Box>
+    );
+  }
 
-          {activeTab === 0 && (
-            <Box>
-            <Stack spacing={3}>
-                <Typography variant="h6">Calculation Settings</Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Latitude"
-                      type="number"
-                      value={calculationSettings.latitude}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        latitude: parseFloat(e.target.value),
-                      })}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Longitude"
-                      type="number"
-                      value={calculationSettings.longitude}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        longitude: parseFloat(e.target.value),
-                      })}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                      <InputLabel>Calculation Method</InputLabel>
-                <Select
-                        value={calculationSettings.calculationMethod}
-                  label="Calculation Method"
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                      calculationMethod: e.target.value,
-                        })}
-                      >
-                        {CALCULATION_METHODS.map((method) => (
-                          <MenuItem key={method.value} value={method.value}>
-                            {method.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth>
-                      <InputLabel>Madhab</InputLabel>
-                      <Select
-                        value={calculationSettings.madhab}
-                        label="Madhab"
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                          madhab: e.target.value,
-                        })}
-                      >
-                        {MADHABS.map((madhab) => (
-                          <MenuItem key={madhab.value} value={madhab.value}>
-                            {madhab.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Month"
-                      type="number"
-                      value={calculationSettings.month}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        month: parseInt(e.target.value),
-                      })}
-                      inputProps={{ min: 1, max: 12 }}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Year"
-                      type="number"
-                      value={calculationSettings.year}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        year: parseInt(e.target.value),
-                      })}
-                      fullWidth
-                    />
-                  </Grid>
+  return (
+    <Box sx={{ 
+      width: '100%', 
+      p: 3,
+      maxWidth: '1400px',
+      mx: 'auto'
+    }}>
+      {/* Page Title */}
+      <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 'bold' }}>
+        {pageTitle}
+      </Typography>
+
+      {/* Description */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body2" color="text.secondary">
+          Manage and customize prayer times for your masjid.
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          You can calculate prayer times automatically, upload prayer times via CSV, or manually edit individual entries.
+        </Typography>
+      </Box>
+
+      {/* Tabs */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tab label="Calculate Times" />
+          <Tab label="Upload CSV" />
+          <Tab label="View/Edit Times" />
+        </Tabs>
+      </Box>
+
+      {/* Display non-fatal errors */}
+      {error && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 3 }}
+          onClose={() => setError(null)}
+        >
+          <Typography variant="body1">{error}</Typography>
+        </Alert>
+      )}
+
+      {activeTab === 0 && (
+        <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
+          <CardContent sx={{ p: '32px 40px' }}>
+            <Stack spacing={4}>
+              <Typography variant="h5" fontWeight="medium">Calculation Settings</Typography>
+              <Grid container spacing={3} sx={{ px: { xs: 0, sm: 1 } }}>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <TextField
+                    label="Latitude"
+                    type="number"
+                    value={calculationSettings.latitude}
+                    onChange={(e) => setCalculationSettings({
+                      ...calculationSettings,
+                      latitude: parseFloat(e.target.value),
+                    })}
+                    fullWidth
+                    variant="outlined"
+                  />
                 </Grid>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <TextField
+                    label="Longitude"
+                    type="number"
+                    value={calculationSettings.longitude}
+                    onChange={(e) => setCalculationSettings({
+                      ...calculationSettings,
+                      longitude: parseFloat(e.target.value),
+                    })}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Calculation Method</InputLabel>
+                    <Select
+                      value={calculationSettings.calculationMethod}
+                      label="Calculation Method"
+                      onChange={(e) => setCalculationSettings({
+                        ...calculationSettings,
+                        calculationMethod: e.target.value,
+                      })}
+                    >
+                      {CALCULATION_METHODS.map((method) => (
+                        <MenuItem key={method.value} value={method.value}>
+                          {method.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <FormControl fullWidth variant="outlined">
+                    <InputLabel>Madhab</InputLabel>
+                    <Select
+                      value={calculationSettings.madhab}
+                      label="Madhab"
+                      onChange={(e) => setCalculationSettings({
+                        ...calculationSettings,
+                        madhab: e.target.value,
+                      })}
+                    >
+                      {MADHABS.map((madhab) => (
+                        <MenuItem key={madhab.value} value={madhab.value}>
+                          {madhab.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <TextField
+                    label="Month"
+                    type="number"
+                    value={calculationSettings.month}
+                    onChange={(e) => setCalculationSettings({
+                      ...calculationSettings,
+                      month: parseInt(e.target.value),
+                    })}
+                    inputProps={{ min: 1, max: 12 }}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
+                  <TextField
+                    label="Year"
+                    type="number"
+                    value={calculationSettings.year}
+                    onChange={(e) => setCalculationSettings({
+                      ...calculationSettings,
+                      year: parseInt(e.target.value),
+                    })}
+                    fullWidth
+                    variant="outlined"
+                  />
+                </Grid>
+              </Grid>
 
-                <Typography variant="h6">Adjustments (minutes)</Typography>
-                <Grid container spacing={2}>
-                  {Object.keys(calculationSettings.adjustments).map((prayer) => (
-                    <Grid item xs={12} sm={6} md={4} key={prayer}>
-                      <TextField
-                        label={`${prayer.charAt(0).toUpperCase() + prayer.slice(1)} Adjustment`}
-                        type="number"
-                        value={calculationSettings.adjustments[prayer as keyof typeof calculationSettings.adjustments]}
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                          adjustments: {
-                            ...calculationSettings.adjustments,
-                            [prayer]: parseInt(e.target.value) || 0,
-                          },
-                        })}
+              <Divider />
+
+              <Typography variant="h5" fontWeight="medium">Adjustments (minutes)</Typography>
+              <Grid container spacing={3} sx={{ px: { xs: 0, sm: 1 } }}>
+                {Object.keys(calculationSettings.adjustments).map((prayer) => (
+                  <Grid item xs={12} sm={6} md={4} key={prayer} sx={{ pr: { sm: 2 } }}>
+                    <TextField
+                      label={`${prayer.charAt(0).toUpperCase() + prayer.slice(1)} Adjustment`}
+                      type="number"
+                      value={calculationSettings.adjustments[prayer as keyof typeof calculationSettings.adjustments]}
+                      onChange={(e) => setCalculationSettings({
+                        ...calculationSettings,
+                        adjustments: {
+                          ...calculationSettings.adjustments,
+                          [prayer]: parseInt(e.target.value) || 0,
+                        },
+                      })}
                       fullWidth
+                      variant="outlined"
                     />
                   </Grid>
                 ))}
               </Grid>
 
+              <Box sx={{ pt: 2 }}>
                 <Stack direction="row" spacing={2}>
-                  <Button variant="contained" onClick={handleCalculate}>
+                  <Button 
+                    variant="contained" 
+                    onClick={handleCalculate}
+                    size="large"
+                    sx={{ px: 3, py: 1 }}
+                  >
                     Calculate Month
                   </Button>
-                  <Button variant="outlined" onClick={handleCalculateYear}>
+                  <Button 
+                    variant="outlined" 
+                    onClick={handleCalculateYear}
+                    size="large"
+                    sx={{ px: 3, py: 1 }}
+                  >
                     Calculate Year
                   </Button>
                 </Stack>
-              </Stack>
-            </Box>
-          )}
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
-          {activeTab === 1 && (
-              <Box>
-              <Stack spacing={2}>
-                <Typography variant="body1">
-                  Upload a CSV file with prayer times. The file should include the following columns:
-                  Date (DD/MM/YYYY), Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha, and optional Jamaat times.
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+      {activeTab === 1 && (
+        <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
+          <CardContent sx={{ p: '32px 40px' }}>
+            <Stack spacing={3}>
+              <Typography variant="h5" fontWeight="medium">Upload Prayer Times</Typography>
+              <Typography variant="body1">
+                Upload a CSV file with prayer times. The file should include the following columns:
+                Date (DD/MM/YYYY), Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha, and optional Jamaat times.
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', pt: 1 }}>
                 <Button
                   variant="contained"
-                    component="label"
-                  >
-                    Upload CSV File
-                    <input
-                      type="file"
-                      hidden
-                      accept=".csv"
-                      onChange={handleCSVUpload}
-                    />
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    component="a"
-                    href="/example-timetable.csv"
-                    download
-                    startIcon={<DownloadIcon />}
-                  >
-                    Download Example CSV
+                  component="label"
+                  size="large"
+                  sx={{ px: 3, py: 1 }}
+                >
+                  Upload CSV File
+                  <input
+                    type="file"
+                    hidden
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                  />
                 </Button>
-                </Box>
-                <Alert severity="info" sx={{ mt: 2 }}>
-                  <AlertTitle>CSV Format Guidelines</AlertTitle>
-                  <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                    <li>Date must be in DD/MM/YYYY format</li>
-                    <li>Times must be in 24-hour format (HH:mm)</li>
-                    <li>Required columns: Date, Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha</li>
-                    <li>Optional columns: Fajr Jamaat, Zuhr Jamaat, Asr Jamaat, Maghrib Jamaat, Isha Jamaat</li>
-                    <li>For Fridays, you can include Jummah Khutbah and Jummah Jamaat times</li>
-                  </ul>
+                <Button
+                  variant="outlined"
+                  component="a"
+                  href="/example-timetable.csv"
+                  download
+                  startIcon={<DownloadIcon />}
+                  size="large"
+                  sx={{ px: 3, py: 1 }}
+                >
+                  Download Example CSV
+                </Button>
+              </Box>
+              <Alert severity="info" sx={{ mt: 1 }}>
+                <AlertTitle>CSV Format Guidelines</AlertTitle>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                  <li>Date must be in DD/MM/YYYY format</li>
+                  <li>Times must be in 24-hour format (HH:mm)</li>
+                  <li>Required columns: Date, Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha</li>
+                  <li>Optional columns: Fajr Jamaat, Zuhr Jamaat, Asr Jamaat, Maghrib Jamaat, Isha Jamaat</li>
+                  <li>For Fridays, you can include Jummah Khutbah and Jummah Jamaat times</li>
+                </ul>
+              </Alert>
+              {error && (
+                <Alert severity="error" onClose={() => setError(null)}>
+                  {error}
                 </Alert>
-                {error && (
-                  <Alert severity="error" onClose={() => setError(null)}>
-                    {error}
-                  </Alert>
-                )}
-              </Stack>
-            </Box>
-          )}
+              )}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
-          {activeTab === 2 && (
-            <Box sx={{ margin: -3 }}>
+      {activeTab === 2 && (
+        <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
+          <CardContent sx={{ p: 0 }}>
+            <Box sx={{ p: '32px 40px', pb: 2 }}>
+              <Typography variant="h5" fontWeight="medium" sx={{ mb: 3 }}>Prayer Times Table</Typography>
+            </Box>
+            <Box>
               <TableContainer component={Paper} sx={{ 
                 borderRadius: 0,
+                boxShadow: 'none',
                 '& .MuiTable-root': {
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                 },
                 '& .MuiTableCell-root': {
                   borderBottom: '1px solid rgba(224, 224, 224, 1)',
+                  padding: '12px 16px',
                   '&:first-of-type': {
-                    pl: 3
+                    pl: '40px'
                   },
                   '&:last-of-type': {
-                    pr: 3
+                    pr: '40px'
                   }
                 },
                 '& .MuiTableHead-root .MuiTableCell-root': {
@@ -583,7 +668,7 @@ export default function PrayerTimesAdmin() {
                   fontWeight: 600
                 }
               }}>
-                <Table size="small" stickyHeader>
+                <Table stickyHeader>
                   <TableHead>
                     <TableRow>
                       <TableCell>Date</TableCell>
@@ -633,99 +718,134 @@ export default function PrayerTimesAdmin() {
                   </TableBody>
                 </Table>
               </TableContainer>
-              </Box>
-          )}
-        </CardContent>
-      </Card>
-
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 2,
-            '& .MuiAlert-message': {
-              width: '100%'
-            }
-          }} 
-          onClose={() => setError(null)}
-        >
-          {error}
-        </Alert>
+            </Box>
+          </CardContent>
+        </Card>
       )}
 
-      <Dialog open={isEditDialogOpen} onClose={() => setIsEditDialogOpen(false)}>
-        <DialogTitle>Edit Prayer Times</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 2 }}>
+      <Dialog 
+        open={isEditDialogOpen} 
+        onClose={() => setIsEditDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            m: 2,
+            width: 'calc(100% - 32px)',
+            maxWidth: { xs: 'calc(100% - 32px)', sm: '600px' }
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
+          Edit Prayer Times
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2, pb: 2, px: '32px' }}>
+          <Stack spacing={3}>
             {selectedTime && (
               <>
                 <TextField
                   label="Date"
                   value={format(selectedTime.date, 'dd/MM/yyyy')}
                   disabled
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Fajr"
                   value={selectedTime.fajr}
                   onChange={(e) => setSelectedTime({ ...selectedTime, fajr: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Fajr Jamaat"
                   value={selectedTime.fajrJamaat}
                   onChange={(e) => setSelectedTime({ ...selectedTime, fajrJamaat: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Sunrise"
                   value={selectedTime.sunrise}
                   onChange={(e) => setSelectedTime({ ...selectedTime, sunrise: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Zuhr"
                   value={selectedTime.zuhr}
                   onChange={(e) => setSelectedTime({ ...selectedTime, zuhr: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Zuhr Jamaat"
                   value={selectedTime.zuhrJamaat}
                   onChange={(e) => setSelectedTime({ ...selectedTime, zuhrJamaat: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Asr"
                   value={selectedTime.asr}
                   onChange={(e) => setSelectedTime({ ...selectedTime, asr: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Asr Jamaat"
                   value={selectedTime.asrJamaat}
                   onChange={(e) => setSelectedTime({ ...selectedTime, asrJamaat: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Maghrib"
                   value={selectedTime.maghrib}
                   onChange={(e) => setSelectedTime({ ...selectedTime, maghrib: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Maghrib Jamaat"
                   value={selectedTime.maghribJamaat}
                   onChange={(e) => setSelectedTime({ ...selectedTime, maghribJamaat: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Isha"
                   value={selectedTime.isha}
                   onChange={(e) => setSelectedTime({ ...selectedTime, isha: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
                 <TextField
                   label="Isha Jamaat"
                   value={selectedTime.ishaJamaat}
                   onChange={(e) => setSelectedTime({ ...selectedTime, ishaJamaat: e.target.value })}
+                  variant="outlined"
+                  fullWidth
                 />
               </>
             )}
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleSaveEdit} variant="contained">Save</Button>
+        <DialogActions sx={{ px: '32px', pb: '24px', pt: 2 }}>
+          <Button 
+            onClick={() => setIsEditDialogOpen(false)} 
+            size="large"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveEdit} 
+            variant="contained" 
+            size="large"
+            sx={{ px: 3, py: 1 }}
+          >
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
