@@ -19,6 +19,8 @@ import {
   Badge,
   useTheme,
   useMediaQuery,
+  Container,
+  Divider,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -108,36 +110,7 @@ export default function DashboardLayout({
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Logo and Brand */}
-      <Box
-        sx={{
-          p: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-        }}
-      >
-        <Image
-          src="/logo.png"
-          alt="MasjidConnect"
-          width={40}
-          height={40}
-          style={{ borderRadius: '8px' }}
-        />
-        <Typography
-          variant="h6"
-          sx={{
-            fontWeight: 700,
-            background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.primary.light})`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          MasjidConnect
-        </Typography>
-      </Box>
-
-      {/* Navigation */}
+      {/* Navigation section starts directly - Logo moved to main content */}
       <List sx={{ flex: 1, px: 2 }}>
         {menuItems.map((item) => (
           <ListItem key={item.path} disablePadding sx={{ mb: 1 }}>
@@ -260,37 +233,67 @@ export default function DashboardLayout({
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, md: 4 },
+          p: { xs: 2, md: 3 },
           bgcolor: theme.palette.background.default,
           minHeight: '100vh',
           width: '100%',
           position: 'relative',
         }}
       >
-        {/* Mobile header */}
-        <Box
-          sx={{
-            display: { xs: 'flex', md: 'none' },
-            mb: 2,
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
+        {/* Minimal header with brand name */}
+        <Container maxWidth="lg" sx={{ pt: 0, pb: 0 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              py: 0.75,
+            }}
           >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            MasjidConnect
-          </Typography>
-        </Box>
+            {/* Mobile menu button */}
+            <Box>
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ display: { md: 'none' } }}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
+            
+            {/* Unified MasjidConnect brand - right aligned */}
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', pr: 0.5 }}>
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.primary.main,
+                }}
+              >
+                Masjid
+              </Typography>
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{
+                  fontWeight: 600,
+                  color: theme.palette.secondary.main,
+                }}
+              >
+                Connect
+              </Typography>
+            </Box>
+          </Box>
+          <Divider sx={{ mt: 0.5, mb: 1.5 }} />
+        </Container>
 
         {/* Page content */}
-        {children}
+        <Container maxWidth="lg">
+          {children}
+        </Container>
       </Box>
     </Box>
   );
