@@ -10,6 +10,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ScreenStatus {
+  ONLINE
+  OFFLINE
+  PAIRING
+}
+
+enum ScreenOrientation {
+  LANDSCAPE
+  PORTRAIT
+}
+
+enum ContentType {
+  VERSE_HADITH
+  ANNOUNCEMENT
+  EVENT
+  CUSTOM
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -37,6 +60,8 @@ model Masjid {
   hadiths         Hadith[]
   announcements   Announcement[]
   screens         Screen[]
+  contentItems    ContentItem[]
+  contentSchedules ContentSchedule[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -122,6 +147,8 @@ model Screen {
   orientation ScreenOrientation @default(LANDSCAPE)
   contentConfig Json?
   isActive    Boolean   @default(true)
+  scheduleId  String?
+  schedule    ContentSchedule? @relation("ScreenSchedule", fields: [scheduleId], references: [id])
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   contentOverrides ScreenContentOverride[]
@@ -143,18 +170,47 @@ model ScreenContentOverride {
   @@unique([screenId, contentType])
 }
 
-enum ScreenStatus {
-  ONLINE
-  OFFLINE
-  PAIRING
+model ContentItem {
+  id          String    @id @default(cuid())
+  masjidId    String
+  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  type        ContentType
+  title       String
+  content     Json
+  duration    Int       @default(10) // Duration in seconds
+  isActive    Boolean   @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  schedules   ContentScheduleItem[]
 }
 
-enum ScreenOrientation {
-  LANDSCAPE
-  PORTRAIT
+model ContentSchedule {
+  id          String    @id @default(cuid())
+  masjidId    String
+  masjid      Masjid    @relation(fields: [masjidId], references: [id])
+  name        String
+  description String?
+  isDefault   Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  items       ContentScheduleItem[]
+  screens     Screen[]  @relation("ScreenSchedule")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([masjidId, isDefault])
 }
 
-enum Role {
-  USER
-  ADMIN
+model ContentScheduleItem {
+  id              String          @id @default(cuid())
+  scheduleId      String
+  schedule        ContentSchedule @relation(fields: [scheduleId], references: [id])
+  contentItemId   String
+  contentItem     ContentItem     @relation(fields: [contentItemId], references: [id])
+  order          Int
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([scheduleId, order])
 } 
