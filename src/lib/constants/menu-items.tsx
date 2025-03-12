@@ -42,7 +42,7 @@ export const mainMenuItems: MenuItem[] = [
     icon: <ContentIcon />,
     children: [
       {
-        title: 'All Content',
+        title: 'Content Schedules',
         path: '/screens/content',
         icon: <ContentIcon />,
       },

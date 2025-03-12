@@ -132,12 +132,20 @@ export default function DashboardLayout({
   // Local UI state
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [contentMenuOpen, setContentMenuOpen] = useState(false);
   
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Update contentMenuOpen when pathname changes
+  React.useEffect(() => {
+    if (pathname.startsWith('/screens/content')) {
+      setContentMenuOpen(true);
+    }
+  }, [pathname]);
 
   const handleDrawerToggle = useCallback(() => {
     setMobileOpen(!mobileOpen);
@@ -146,6 +154,10 @@ export default function DashboardLayout({
   const handleUserMenuToggle = useCallback(() => {
     setUserMenuOpen(!userMenuOpen);
   }, [userMenuOpen]);
+
+  const handleContentMenuToggle = useCallback(() => {
+    setContentMenuOpen(!contentMenuOpen);
+  }, [contentMenuOpen]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -288,8 +300,11 @@ export default function DashboardLayout({
           <React.Fragment key={item.path}>
             <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
               <ListItemButton
-                component="a"
-                href={item.path}
+                component={item.children ? 'button' : 'a'}
+                href={item.children ? undefined : item.path}
+                onClick={item.children ? 
+                  (item.title === 'Content Management' ? handleContentMenuToggle : undefined) 
+                  : undefined}
                 selected={pathname === item.path}
                 sx={{
                   borderRadius: 2,
@@ -322,18 +337,29 @@ export default function DashboardLayout({
                   />
                 )}
                 {item.children && (
-                  <ExpandMoreIcon 
-                    sx={{ 
-                      fontSize: '1.2rem',
-                      color: 'rgba(255, 255, 255, 0.7)',
-                      transform: pathname.startsWith(item.path) ? 'rotate(180deg)' : 'none',
-                      transition: 'transform 0.2s',
-                    }} 
-                  />
+                  item.title === 'Content Management' ? (
+                    contentMenuOpen ? (
+                      <ExpandLessIcon 
+                        sx={{ 
+                          fontSize: '1.2rem',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          transition: 'transform 0.2s',
+                        }} 
+                      />
+                    ) : (
+                      <ExpandMoreIcon 
+                        sx={{ 
+                          fontSize: '1.2rem',
+                          color: 'rgba(255, 255, 255, 0.7)',
+                          transition: 'transform 0.2s',
+                        }} 
+                      />
+                    )
+                  ) : null
                 )}
               </ListItemButton>
             </ListItem>
-            {item.children && pathname.startsWith(item.path) && (
+            {item.children && contentMenuOpen && item.title === 'Content Management' && (
               <List component="div" disablePadding>
                 {item.children.map((child) => (
                   <React.Fragment key={child.path}>
@@ -418,9 +444,11 @@ export default function DashboardLayout({
     isLoading, 
     userName, 
     masjidName, 
-    userMenuOpen, 
+    userMenuOpen,
+    contentMenuOpen,
     pathname, 
-    handleUserMenuToggle, 
+    handleUserMenuToggle,
+    handleContentMenuToggle,
     handleLogout,
     session
   ]);
