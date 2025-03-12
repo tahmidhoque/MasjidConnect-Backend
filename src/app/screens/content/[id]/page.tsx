@@ -16,12 +16,33 @@ import {
   Stack,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemButton,
+  Checkbox,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
+  Divider,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
   Delete as DeleteIcon,
   DragIndicator as DragIcon,
   AccessTime as TimeIcon,
+  Add as AddIcon,
+  Event as EventIcon,
+  Announcement as AnnouncementIcon,
+  MenuBook as VerseIcon,
+  Code as CustomIcon,
 } from '@mui/icons-material';
 import { useContentSchedules, ContentScheduleItem } from '@/lib/hooks/use-content-schedules';
 import {
@@ -41,6 +62,24 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { getContentItems } from '@/lib/services/content';
+
+// Define content types for filtering
+enum ContentType {
+  VERSE_HADITH = 'VERSE_HADITH',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
+  EVENT = 'EVENT',
+  CUSTOM = 'CUSTOM',
+}
+
+// Content item interface
+interface ContentItem {
+  id: string;
+  title: string;
+  type: ContentType;
+  duration: number;
+  isActive: boolean;
+}
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -66,6 +105,22 @@ function TabPanel(props: TabPanelProps) {
       )}
     </div>
   );
+}
+
+// Get content type icon
+function getContentTypeIcon(type: string) {
+  switch (type) {
+    case ContentType.VERSE_HADITH:
+      return <VerseIcon />;
+    case ContentType.ANNOUNCEMENT:
+      return <AnnouncementIcon />;
+    case ContentType.EVENT:
+      return <EventIcon />;
+    case ContentType.CUSTOM:
+      return <CustomIcon />;
+    default:
+      return <CustomIcon />;
+  }
 }
 
 // Sortable item component for drag and drop
@@ -145,9 +200,16 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   const [value, setValue] = useState(0); // Start with General settings tab
   const [name, setName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [scheduleItems, setScheduleItems] = useState<ContentScheduleItem[]>([]);
   const { schedules, updateSchedule } = useContentSchedules();
+
+  // State for content item selector
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [availableContentItems, setAvailableContentItems] = useState<ContentItem[]>([]);
+  const [selectedContentItems, setSelectedContentItems] = useState<string[]>([]);
+  const [filterType, setFilterType] = useState<string>('ALL');
 
   // Sensors for drag and drop
   const sensors = useSensors(
@@ -160,6 +222,11 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   // Find the current schedule
   const currentSchedule = schedules.find(s => s.id === resolvedParams.id);
 
+  // Filter available content items
+  const filteredContentItems = filterType === 'ALL'
+    ? availableContentItems
+    : availableContentItems.filter(item => item.type === filterType);
+
   // Set initial name and items when schedule is loaded
   useEffect(() => {
     if (currentSchedule) {
@@ -167,6 +234,19 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
       setScheduleItems(currentSchedule.items || []);
     }
   }, [currentSchedule]);
+
+  // Fetch available content items
+  const fetchContentItems = async () => {
+    setIsLoading(true);
+    try {
+      const items = await getContentItems();
+      setAvailableContentItems(items);
+    } catch (error) {
+      console.error('Error fetching content items:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
@@ -235,6 +315,46 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Content selector modal handlers
+  const handleOpenAddModal = () => {
+    fetchContentItems();
+    setSelectedContentItems([]);
+    setFilterType('ALL');
+    setIsModalOpen(true);
+  };
+
+  const handleCloseAddModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleToggleContentItem = (itemId: string) => {
+    setSelectedContentItems(prev => 
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleFilterChange = (event: SelectChangeEvent) => {
+    setFilterType(event.target.value);
+  };
+
+  const handleAddContentItems = () => {
+    // Get selected content items and add them to the schedule
+    const newItems = selectedContentItems.map(id => {
+      const contentItem = availableContentItems.find(item => item.id === id);
+      return {
+        id: Math.random().toString(36).substr(2, 9), // Generate temporary ID
+        contentItemId: id,
+        contentItem,
+        order: scheduleItems.length + selectedContentItems.indexOf(id),
+      };
+    });
+    
+    setScheduleItems([...scheduleItems, ...newItems]);
+    setIsModalOpen(false);
   };
 
   return (
@@ -344,15 +464,97 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                 <Button
                   variant="outlined"
                   fullWidth
-                  onClick={() => router.push('/screens/content/items')}
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenAddModal}
                 >
-                  + Add Content Items
+                  Add Content Items
                 </Button>
               </Box>
             </Stack>
           </CardContent>
         </Card>
       </TabPanel>
+
+      {/* Add Content Items Modal */}
+      <Dialog
+        open={isModalOpen}
+        onClose={handleCloseAddModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          Add Content Items
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ my: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel id="filter-type-label">Filter by Type</InputLabel>
+              <Select
+                labelId="filter-type-label"
+                value={filterType}
+                onChange={handleFilterChange}
+                label="Filter by Type"
+              >
+                <MenuItem value="ALL">All Types</MenuItem>
+                {Object.values(ContentType).map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type.replace('_', ' ')}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ maxHeight: '400px', overflow: 'auto' }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : filteredContentItems.length === 0 ? (
+                <Alert severity="info">
+                  No content items found. Create some content items first.
+                </Alert>
+              ) : (
+                <List sx={{ width: '100%' }}>
+                  {filteredContentItems.map((item) => (
+                    <div key={item.id}>
+                      <ListItem disablePadding>
+                        <ListItemButton onClick={() => handleToggleContentItem(item.id)}>
+                          <ListItemIcon>
+                            <Checkbox
+                              edge="start"
+                              checked={selectedContentItems.includes(item.id)}
+                              tabIndex={-1}
+                              disableRipple
+                            />
+                          </ListItemIcon>
+                          <ListItemIcon>
+                            {getContentTypeIcon(item.type)}
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={item.title}
+                            secondary={`${item.type.replace('_', ' ')} - ${item.duration}s`}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                      <Divider />
+                    </div>
+                  ))}
+                </List>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAddModal}>Cancel</Button>
+          <Button 
+            onClick={handleAddContentItems} 
+            variant="contained"
+            disabled={selectedContentItems.length === 0}
+          >
+            Add Selected ({selectedContentItems.length})
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 } 
