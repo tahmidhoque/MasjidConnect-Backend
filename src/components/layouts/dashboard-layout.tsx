@@ -492,7 +492,11 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <Container maxWidth="lg">
-          {children}
+          <Fade in={true} timeout={300}>
+            <Box>
+              {children}
+            </Box>
+          </Fade>
         </Container>
       </Box>
     </Box>

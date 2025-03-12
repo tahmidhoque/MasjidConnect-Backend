@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { SessionProvider } from 'next-auth/react';
 import theme from '@/lib/theme';
 import { UserProvider } from '@/contexts/UserContext';
+import PageTransition from '@/components/PageTransition';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CssBaseline />
         <UserProvider>
           <div suppressHydrationWarning>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </div>
         </UserProvider>
       </ThemeProvider>
