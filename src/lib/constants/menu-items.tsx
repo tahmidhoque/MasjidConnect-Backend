@@ -54,22 +54,22 @@ export const mainMenuItems: MenuItem[] = [
       },
       {
         title: 'Verse/Hadith',
-        path: '/screens/content/create/verse_hadith',
+        path: '/screens/content/verse_hadith',
         icon: <VerseIcon />,
       },
       {
         title: 'Announcements',
-        path: '/screens/content/create/announcement',
+        path: '/screens/content/announcement',
         icon: <AnnouncementIcon />,
       },
       {
         title: 'Events',
-        path: '/screens/content/create/event',
+        path: '/screens/content/event',
         icon: <EventIcon />,
       },
       {
         title: 'Custom Content',
-        path: '/screens/content/create/custom',
+        path: '/screens/content/custom',
         icon: <CustomIcon />,
       },
     ]

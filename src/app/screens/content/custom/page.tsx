@@ -1,0 +1,312 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  IconButton,
+  Card,
+  CardContent,
+  CardActions,
+  Grid,
+  Tooltip,
+  CircularProgress,
+  FormControlLabel,
+  Switch,
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Close as CloseIcon,
+  Timer as DurationIcon,
+} from '@mui/icons-material';
+import dynamic from 'next/dynamic';
+import 'react-quill/dist/quill.snow.css';
+
+interface ReactQuillProps {
+  value: string;
+  onChange: (value: string) => void;
+  style?: React.CSSProperties;
+}
+
+// Import the rich text editor dynamically to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), {
+  ssr: false,
+  loading: () => <Box sx={{ height: 200, bgcolor: 'action.hover' }} />,
+}) as any; // Using any temporarily until we can properly type this
+
+interface CustomContentItem {
+  id: string;
+  title: string;
+  content: string;
+  duration: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export default function CustomContentPage() {
+  const [items, setItems] = useState<CustomContentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CustomContentItem | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    duration: 30,
+    isActive: true,
+  });
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/content/custom');
+      if (!response.ok) throw new Error('Failed to fetch items');
+      const data = await response.json();
+      setItems(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenModal = (item?: CustomContentItem) => {
+    if (item) {
+      setEditingItem(item);
+      setFormData({
+        title: item.title,
+        content: item.content,
+        duration: item.duration,
+        isActive: item.isActive,
+      });
+    } else {
+      setEditingItem(null);
+      setFormData({
+        title: '',
+        content: '',
+        duration: 30,
+        isActive: true,
+      });
+    }
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setEditingItem(null);
+    setFormData({
+      title: '',
+      content: '',
+      duration: 30,
+      isActive: true,
+    });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const url = editingItem 
+        ? `/api/content/custom/${editingItem.id}`
+        : '/api/content/custom';
+      
+      const response = await fetch(url, {
+        method: editingItem ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error('Failed to save item');
+      
+      await fetchItems();
+      handleCloseModal();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    
+    try {
+      const response = await fetch(`/api/content/custom/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete item');
+      
+      await fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h5" component="h1">
+          Custom Content
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenModal()}
+        >
+          Add New
+        </Button>
+      </Box>
+
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={2}>
+        {items.map((item) => (
+          <Grid item xs={12} sm={6} md={4} key={item.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="h2" gutterBottom>
+                  {item.title}
+                  {!item.isActive && (
+                    <Tooltip title="Inactive">
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-block',
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          bgcolor: 'text.disabled',
+                          ml: 1,
+                          verticalAlign: 'middle',
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </Typography>
+                <Box
+                  sx={{
+                    mb: 1,
+                    '& .ql-editor': {
+                      p: 0,
+                      maxHeight: 100,
+                      overflow: 'hidden',
+                    },
+                  }}
+                  dangerouslySetInnerHTML={{ __html: item.content }}
+                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <DurationIcon fontSize="small" color="action" />
+                  <Typography variant="caption" color="text.secondary">
+                    Duration: {item.duration} seconds
+                  </Typography>
+                </Box>
+              </CardContent>
+              <CardActions>
+                <Tooltip title="Edit">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleOpenModal(item)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Delete">
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Dialog
+        open={modalOpen}
+        onClose={handleCloseModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingItem ? 'Edit' : 'Add'} Custom Content
+          <IconButton
+            onClick={handleCloseModal}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Title"
+              fullWidth
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Content
+              </Typography>
+              <ReactQuill
+                value={formData.content}
+                onChange={(content: string) => setFormData({ ...formData, content })}
+                style={{ height: 200, marginBottom: 50 }}
+              />
+            </Box>
+            <TextField
+              label="Duration (seconds)"
+              type="number"
+              fullWidth
+              value={formData.duration}
+              onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 30 })}
+              InputProps={{ inputProps: { min: 5, max: 300 } }}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                />
+              }
+              label="Active"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">
+            {editingItem ? 'Save' : 'Add'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+} 
