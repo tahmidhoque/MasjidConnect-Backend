@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { signOut, useSession } from 'next-auth/react';
@@ -45,6 +45,7 @@ import {
 import { clearUserData } from '@/lib/auth-client';
 import { useUserContext } from '@/contexts/UserContext';
 import ClientOnly from '@/components/ClientOnly';
+import React from 'react';
 
 const drawerWidth = 280;
 
@@ -105,8 +106,20 @@ const userMenuItems: MenuItem[] = [
   },
 ];
 
-// User Profile Component that only renders on client
-function UserProfileSection({ 
+// Define interface for UserProfileSection props
+interface UserProfileSectionProps {
+  userName: string | null;
+  masjidName: string | null;
+  isLoading: boolean;
+  isInitialized: boolean;
+  userMenuOpen: boolean;
+  handleUserMenuToggle: () => void;
+  session: any; // Using any for session since it's a complex type from next-auth
+  theme: any; // Using any for theme since it's from MUI
+}
+
+// Memoize the UserProfileSection component
+const UserProfileSection = React.memo(function UserProfileSection({ 
   userName, 
   masjidName, 
   isLoading, 
@@ -115,7 +128,7 @@ function UserProfileSection({
   handleUserMenuToggle,
   session,
   theme
-}) {
+}: UserProfileSectionProps) {
   return (
     <Box 
       sx={{ 
@@ -170,7 +183,7 @@ function UserProfileSection({
       )}
     </Box>
   );
-}
+});
 
 export default function DashboardLayout({
   children,
@@ -190,15 +203,15 @@ export default function DashboardLayout({
   const router = useRouter();
   const { data: session } = useSession();
 
-  const handleDrawerToggle = () => {
+  const handleDrawerToggle = useCallback(() => {
     setMobileOpen(!mobileOpen);
-  };
+  }, [mobileOpen]);
 
-  const handleUserMenuToggle = () => {
+  const handleUserMenuToggle = useCallback(() => {
     setUserMenuOpen(!userMenuOpen);
-  };
+  }, [userMenuOpen]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     try {
       // Clear stored data on logout
       clearUserData();
@@ -211,7 +224,28 @@ export default function DashboardLayout({
       console.error('Logout error:', error);
       router.push('/login?signOut=true');
     }
-  };
+  }, [router]);
+
+  // Memoize user profile data
+  const userProfileData = useMemo(() => ({
+    userName,
+    masjidName,
+    isLoading,
+    isInitialized,
+    userMenuOpen,
+    handleUserMenuToggle,
+    session,
+    theme
+  }), [
+    userName,
+    masjidName,
+    isLoading,
+    isInitialized,
+    userMenuOpen,
+    handleUserMenuToggle,
+    session,
+    theme
+  ]);
 
   // Memoize the drawer component to prevent re-renders when navigating
   const drawer = useMemo(() => (
@@ -243,16 +277,7 @@ export default function DashboardLayout({
             <Skeleton variant="text" width="60%" height={16} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
           </Box>
         }>
-          <UserProfileSection
-            userName={userName}
-            masjidName={masjidName}
-            isLoading={isLoading}
-            isInitialized={isInitialized}
-            userMenuOpen={userMenuOpen}
-            handleUserMenuToggle={handleUserMenuToggle}
-            session={session}
-            theme={theme}
-          />
+          <UserProfileSection {...userProfileData} />
         </ClientOnly>
       </Box>
 
@@ -492,11 +517,9 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <Container maxWidth="lg">
-          <Fade in={true} timeout={300}>
-            <Box>
-              {children}
-            </Box>
-          </Fade>
+          <Box>
+            {children}
+          </Box>
         </Container>
       </Box>
     </Box>

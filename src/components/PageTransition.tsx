@@ -11,23 +11,30 @@ interface PageTransitionProps {
 export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname();
 
-  // Animation variants
+  // Animation variants - using a crossfade effect
   const variants = {
-    hidden: { opacity: 0 },
-    enter: { opacity: 1 },
-    exit: { opacity: 0 },
+    initial: { opacity: 0, x: 0 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 0 },
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial="hidden"
-        animate="enter"
+        initial="initial"
+        animate="animate"
         exit="exit"
         variants={variants}
-        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-        style={{ width: '100%', height: '100%' }}
+        transition={{ 
+          duration: 0.15,  // Faster transition
+          ease: 'easeInOut'
+        }}
+        style={{ 
+          width: '100%',
+          height: '100%',
+          position: 'relative'
+        }}
       >
         {children}
       </motion.div>
