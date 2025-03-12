@@ -28,83 +28,19 @@ import {
   Fade,
 } from '@mui/material';
 import {
-  Dashboard as DashboardIcon,
-  Settings as SettingsIcon,
-  Person as PersonIcon,
-  Mosque as MosqueIcon,
-  Schedule as ScheduleIcon,
-  Notifications as NotificationsIcon,
   Menu as MenuIcon,
   ExitToApp as LogoutIcon,
-  ScreenShare as ScreenIcon,
-  Article as ContentIcon,
+  AccountCircle as AccountCircleIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  AccountCircle as AccountCircleIcon,
 } from '@mui/icons-material';
 import { clearUserData } from '@/lib/auth-client';
 import { useUserContext } from '@/contexts/UserContext';
 import ClientOnly from '@/components/ClientOnly';
 import React from 'react';
+import { mainMenuItems, userMenuItems } from '@/lib/constants/menu-items';
 
 const drawerWidth = 280;
-
-// Define types
-interface MenuItem {
-  title: string;
-  path: string;
-  icon: React.ReactNode;
-  badge?: number;
-}
-
-// Filter out Profile and Masjid Details from main menu - they'll be in the user submenu
-const menuItems: MenuItem[] = [
-  {
-    title: 'Dashboard',
-    path: '/dashboard',
-    icon: <DashboardIcon />,
-  },
-  {
-    title: 'Prayer Times',
-    path: '/prayer-times',
-    icon: <ScheduleIcon />,
-  },
-  {
-    title: 'Content Management',
-    path: '/screens/content',
-    icon: <ContentIcon />,
-  },
-  {
-    title: 'Display Screens',
-    path: '/screens',
-    icon: <ScreenIcon />,
-  },
-  // {
-  //   title: 'Notifications',
-  //   path: '/notifications',
-  //   icon: <NotificationsIcon />,
-  //   badge: 3, // Example badge count
-  // },
-  {
-    title: 'General Settings',
-    path: '/general-settings',
-    icon: <SettingsIcon />,
-  },
-];
-
-// User submenu items
-const userMenuItems: MenuItem[] = [
-  {
-    title: 'Profile',
-    path: '/profile',
-    icon: <PersonIcon />,
-  },
-  {
-    title: 'Masjid Details',
-    path: '/masjid',
-    icon: <MosqueIcon />,
-  },
-];
 
 // Define interface for UserProfileSection props
 interface UserProfileSectionProps {
@@ -348,44 +284,117 @@ export default function DashboardLayout({
 
       {/* Main navigation */}
       <List sx={{ pt: 1, pb: 1, flexGrow: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
-            <ListItemButton
-              component="a"
-              href={item.path}
-              selected={pathname === item.path}
-              sx={{
-                borderRadius: 2,
-                py: 0.75,
-                '&.Mui-selected': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.title}
+        {mainMenuItems.map((item) => (
+          <React.Fragment key={item.path}>
+            <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+              <ListItemButton
+                component="a"
+                href={item.path}
+                selected={pathname === item.path}
                 sx={{
-                  '& .MuiListItemText-primary': {
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
+                  borderRadius: 2,
+                  py: 0.75,
+                  '&.Mui-selected': {
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.15)',
+                    },
                   },
                 }}
-              />
-              {item.badge && (
-                <Badge 
-                  badgeContent={item.badge} 
-                  color="secondary"
-                  sx={{ mr: 0.5 }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={item.title}
+                  sx={{
+                    '& .MuiListItemText-primary': {
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    },
+                  }}
                 />
-              )}
-            </ListItemButton>
-          </ListItem>
+                {item.badge && (
+                  <Badge 
+                    badgeContent={item.badge} 
+                    color="secondary"
+                    sx={{ mr: 0.5 }}
+                  />
+                )}
+                {item.children && (
+                  <ExpandMoreIcon 
+                    sx={{ 
+                      fontSize: '1.2rem',
+                      color: 'rgba(255, 255, 255, 0.7)',
+                      transform: pathname.startsWith(item.path) ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.2s',
+                    }} 
+                  />
+                )}
+              </ListItemButton>
+            </ListItem>
+            {item.children && pathname.startsWith(item.path) && (
+              <List component="div" disablePadding>
+                {item.children.map((child) => (
+                  <React.Fragment key={child.path}>
+                    {child.divider ? (
+                      <>
+                        <Divider 
+                          sx={{ 
+                            my: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                          }} 
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            px: 4,
+                            py: 0.5,
+                            display: 'block',
+                            color: 'rgba(255, 255, 255, 0.5)',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {child.title}
+                        </Typography>
+                      </>
+                    ) : (
+                      <ListItem disablePadding sx={{ pl: 4, pr: 2, py: 0.5 }}>
+                        <ListItemButton
+                          component="a"
+                          href={child.path}
+                          selected={pathname === child.path}
+                          sx={{
+                            borderRadius: 2,
+                            py: 0.75,
+                            '&.Mui-selected': {
+                              bgcolor: 'rgba(255, 255, 255, 0.1)',
+                              '&:hover': {
+                                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                              },
+                            },
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 40 }}>
+                            {child.icon}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={child.title}
+                            sx={{
+                              '& .MuiListItemText-primary': {
+                                fontSize: '0.9rem',
+                                fontWeight: 500,
+                              },
+                            }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    )}
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+          </React.Fragment>
         ))}
       </List>
 
