@@ -1,148 +1,142 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Stack,
-} from '@mui/material';
-import {
-  People as PeopleIcon,
-  Event as EventIcon,
-  Announcement as AnnouncementIcon,
-  MonetizationOn as DonationIcon,
-} from '@mui/icons-material';
+import { useSession } from "next-auth/react";
+import { Box, Container, Grid, Typography, Paper, CircularProgress } from '@mui/material';
+import { Suspense, useEffect } from 'react';
+import { useTheme } from '@mui/material/styles';
+import { ScreenManagement } from '@/components/dashboard/ScreenManagement';
+import { ContentSchedules } from '@/components/dashboard/ContentSchedules';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { DashboardAlerts } from '@/components/dashboard/DashboardAlerts';
+import { DashboardData } from '@/types/dashboard';
+import { useRealtimeData } from '@/lib/hooks/useRealtimeData';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 
-const stats = [
-  {
-    title: 'Total Members',
-    value: '1,234',
-    icon: <PeopleIcon sx={{ fontSize: 40 }} />,
-    color: 'primary.main',
-  },
-  {
-    title: 'Upcoming Events',
-    value: '5',
-    icon: <EventIcon sx={{ fontSize: 40 }} />,
-    color: 'success.main',
-  },
-  {
-    title: 'Active Announcements',
-    value: '3',
-    icon: <AnnouncementIcon sx={{ fontSize: 40 }} />,
-    color: 'warning.main',
-  },
-  {
-    title: 'Monthly Donations',
-    value: '$12,345',
-    icon: <DonationIcon sx={{ fontSize: 40 }} />,
-    color: 'error.main',
-  },
-];
+async function fetchDashboardData(): Promise<DashboardData> {
+  const response = await fetch('/api/dashboard', {
+    next: { tags: ['dashboard'] },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch dashboard data');
+  }
 
-export default function Dashboard() {
+  return response.json();
+}
+
+export default function DashboardPage() {
+  const theme = useTheme();
   const { data: session } = useSession();
-  const router = useRouter();
+  const { data, error, isLoading } = useRealtimeData<DashboardData>(
+    fetchDashboardData,
+    { refreshInterval: 30000 } // Refresh every 30 seconds
+  );
 
-  const handleSignOut = async () => {
-    try {
-      await signOut({
-        redirect: true,
-        callbackUrl: '/login?signOut=true'
-      });
-    } catch (error) {
-      console.error('Sign out error:', error);
-      router.push('/login?signOut=true');
-    }
-  };
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: 3, 
+            borderRadius: 2, 
+            bgcolor: '#FFF1F0', 
+            color: '#D32F2F',
+            border: '1px solid #FFDAD6'
+          }}
+        >
+          <Typography>Error loading dashboard data: {error.message}</Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (isLoading || !data) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <CircularProgress size={40} thickness={4} />
+      </Box>
+    );
+  }
+
+  // Calculate some metrics
+  const totalScreens = data.screens.length;
+  const onlineScreensCount = data.screens.filter(s => s.status === 'ONLINE').length;
+  const schedulesCount = data.contentSchedules.length;
+  const alertsCount = data.alerts.missingPrayerTimes.length + data.alerts.offlineScreens.length;
 
   return (
-    <Box>
+    <Box sx={{ py: 3 }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Welcome back, Admin
+          Dashboard
         </Typography>
         <Typography color="text.secondary">
-          Here's what's happening with your masjid today.
+          Welcome back, {session?.user?.name || 'Admin'}. Here's the current status of your masjid.
         </Typography>
       </Box>
-
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {stats.map((stat, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card>
-              <CardContent>
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                >
-                  <Box>
-                    <Typography color="text.secondary" gutterBottom>
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h4" fontWeight="bold">
-                      {stat.value}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ color: stat.color }}>{stat.icon}</Box>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
+      
+      {/* Dashboard metrics */}
+      <DashboardMetrics 
+        metrics={[
+          { 
+            label: 'Online Screens', 
+            value: onlineScreensCount, 
+            total: totalScreens > 0 ? totalScreens : undefined, 
+            color: theme.palette.success.main 
+          },
+          { 
+            label: 'Active Schedules', 
+            value: schedulesCount, 
+            color: theme.palette.info.main 
+          },
+          { 
+            label: 'System Alerts', 
+            value: alertsCount, 
+            color: alertsCount > 0 ? theme.palette.error.main : theme.palette.success.main 
+          }
+        ]} 
+      />
+      
       <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Quick Actions
-              </Typography>
-              <Stack spacing={2}>
-                <Button variant="outlined" startIcon={<EventIcon />}>
-                  Add New Event
-                </Button>
-                <Button variant="outlined" startIcon={<AnnouncementIcon />}>
-                  Create Announcement
-                </Button>
-                <Button variant="outlined" startIcon={<PeopleIcon />}>
-                  Manage Members
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
+        {/* System Alerts - Show at top if there are alerts */}
+        {alertsCount > 0 && (
+          <Grid item xs={12}>
+            <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+              <DashboardAlerts alerts={data.alerts} />
+            </Suspense>
+          </Grid>
+        )}
+        
+        {/* Quick Actions - Left side */}
+        <Grid item xs={12} md={4}>
+          <Suspense fallback={<Box sx={{ height: 300, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+            <QuickActions />
+          </Suspense>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                Today's Prayer Times
-              </Typography>
-              <Stack spacing={2}>
-                {['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].map((prayer) => (
-                  <Box
-                    key={prayer}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Typography>{prayer}</Typography>
-                    <Typography>5:30 AM</Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
+        
+        {/* Screen Management - Right side */}
+        <Grid item xs={12} md={8}>
+          <Suspense fallback={<Box sx={{ height: 300, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+            <ScreenManagement screens={data.screens} />
+          </Suspense>
         </Grid>
+        
+        {/* Content Schedules - Full width */}
+        <Grid item xs={12}>
+          <Suspense fallback={<Box sx={{ height: 300, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+            <ContentSchedules schedules={data.contentSchedules} />
+          </Suspense>
+        </Grid>
+        
+        {/* System Alerts - Show at bottom if no alerts */}
+        {alertsCount === 0 && (
+          <Grid item xs={12}>
+            <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+              <DashboardAlerts alerts={data.alerts} />
+            </Suspense>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );
