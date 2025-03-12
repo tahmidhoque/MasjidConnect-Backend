@@ -30,6 +30,7 @@ import {
   Menu as MenuIcon,
   ExitToApp as LogoutIcon,
   ScreenShare as ScreenIcon,
+  Article as ContentIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 280;
@@ -46,14 +47,19 @@ const menuItems = [
     icon: <ScheduleIcon />,
   },
   {
-    title: 'Masjid Details',
-    path: '/masjid',
-    icon: <MosqueIcon />,
+    title: 'Content Management',
+    path: '/screens/content',
+    icon: <ContentIcon />,
   },
   {
     title: 'Display Screens',
     path: '/screens',
     icon: <ScreenIcon />,
+  },
+  {
+    title: 'Masjid Details',
+    path: '/masjid',
+    icon: <MosqueIcon />,
   },
   {
     title: 'Notifications',
