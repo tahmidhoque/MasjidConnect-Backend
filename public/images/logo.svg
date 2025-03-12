@@ -1,0 +1,37 @@
+<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dark blue background -->
+  <rect width="500" height="500" fill="#0c2340" />
+  
+  <!-- Gold star/flower pattern -->
+  <g fill="#f0c75e" transform="translate(250, 220) scale(1.2)">
+    <!-- Inner star points -->
+    <path d="M 0,-80 L 20,-25 L 80,-20 L 25,20 L 20,80 L -20,25 L -80,20 L -25,-20 Z" />
+    
+    <!-- Outer petals -->
+    <g>
+      <!-- Top petal -->
+      <path d="M -15,-80 L 15,-80 L 15,-115 L 0,-130 L -15,-115 Z" />
+      <!-- Top right petal -->
+      <path d="M 56.57,-56.57 L 80,-50 L 95,-65 L 80,-80 L 65,-65 Z" transform="rotate(45)" />
+      <!-- Right petal -->
+      <path d="M 80,-15 L 80,15 L 115,15 L 130,0 L 115,-15 Z" />
+      <!-- Bottom right petal -->
+      <path d="M 56.57,56.57 L 65,80 L 80,95 L 95,80 L 80,65 Z" transform="rotate(-45)" />
+      <!-- Bottom petal -->
+      <path d="M -15,80 L 15,80 L 15,115 L 0,130 L -15,115 Z" />
+      <!-- Bottom left petal -->
+      <path d="M -56.57,56.57 L -65,80 L -80,95 L -95,80 L -80,65 Z" transform="rotate(45)" />
+      <!-- Left petal -->
+      <path d="M -80,-15 L -80,15 L -115,15 L -130,0 L -115,-15 Z" />
+      <!-- Top left petal -->
+      <path d="M -56.57,-56.57 L -80,-50 L -95,-65 L -80,-80 L -65,-65 Z" transform="rotate(-45)" />
+    </g>
+  </g>
+  
+  <!-- Text "MASJIDCONNECT" -->
+  <g transform="translate(250, 355)">
+    <text text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="32">
+      <tspan fill="#f0c75e">MASJID</tspan><tspan fill="#ffffff">CONNECT</tspan>
+    </text>
+  </g>
+</svg>

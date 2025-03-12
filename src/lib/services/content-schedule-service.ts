@@ -49,31 +49,59 @@ export class ContentScheduleService {
       where: { masjidId }
     });
 
-    return await (prisma as any).contentSchedule.create({
-      data: {
-        masjidId,
-        name,
-        description,
-        isActive,
-        isDefault: existingSchedulesCount === 0, // Make it default if it's the first schedule
-        items: {
-          create: slides.map((slide, index) => ({
-            contentItemId: slide.id,
-            order: index
-          }))
-        }
-      },
-      include: {
-        items: {
-          include: {
-            contentItem: true
-          },
-          orderBy: {
-            order: 'asc'
+    // Create the schedule data object
+    const createData = {
+      masjidId,
+      name,
+      description,
+      isActive,
+      isDefault: existingSchedulesCount === 0, // Make it default if it's the first schedule
+    };
+
+    // Check if the slides contain valid content item IDs or placeholders
+    const hasPlaceholders = slides.some(slide => 
+      slide.id.startsWith('placeholder') || !slide.id.match(/^[0-9a-f]{24}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+    );
+
+    // If we have placeholders or no slides at all, create a schedule without items
+    if (hasPlaceholders || slides.length === 0) {
+      return await (prisma as any).contentSchedule.create({
+        data: createData,
+        include: {
+          items: {
+            include: {
+              contentItem: true
+            },
+            orderBy: {
+              order: 'asc'
+            }
           }
         }
-      }
-    });
+      });
+    } else {
+      // Only add items if we have real content item IDs
+      return await (prisma as any).contentSchedule.create({
+        data: {
+          ...createData,
+          items: {
+            create: slides.map((slide, index) => ({
+              contentItemId: slide.id,
+              order: index
+            }))
+          }
+        },
+        include: {
+          items: {
+            include: {
+              contentItem: true
+            },
+            orderBy: {
+              order: 'asc'
+            }
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -179,52 +207,70 @@ export class ContentScheduleService {
     masjidId: string,
     scheduleId: string
   ): Promise<ContentScheduleType> {
-    // Get the schedule
-    const schedule = await (prisma as any).contentSchedule.findFirst({
-      where: {
-        id: scheduleId,
-        masjidId
-      }
-    });
+    try {
+      return await (prisma as any).$transaction(async (tx: any) => {
+        // Get the schedule and verify it exists
+        const schedule = await tx.contentSchedule.findFirst({
+          where: {
+            id: scheduleId,
+            masjidId
+          }
+        });
 
-    if (!schedule) {
-      throw new Error('Schedule not found');
-    }
-
-    // Start a transaction to update both schedules
-    return await prisma.$transaction(async (tx) => {
-      // Remove default from current default schedule
-      await (tx as any).contentSchedule.updateMany({
-        where: {
-          masjidId,
-          isDefault: true
-        },
-        data: {
-          isDefault: false
+        if (!schedule) {
+          throw new Error('Schedule not found');
         }
-      });
 
-      // Set new default schedule and ensure it's active
-      return await (tx as any).contentSchedule.update({
-        where: {
-          id: scheduleId
-        },
-        data: {
-          isDefault: true,
-          isActive: true
-        },
-        include: {
-          items: {
+        // If it's already the default, just return it with items
+        if (schedule.isDefault) {
+          return await tx.contentSchedule.findFirst({
+            where: { id: scheduleId },
             include: {
-              contentItem: true
-            },
-            orderBy: {
-              order: 'asc'
+              items: {
+                include: {
+                  contentItem: true
+                },
+                orderBy: {
+                  order: 'asc'
+                }
+              }
+            }
+          });
+        }
+
+        // Use a single raw query to handle both operations
+        await tx.$executeRawUnsafe(
+          `WITH updated_old AS (
+            UPDATE "ContentSchedule"
+            SET "isDefault" = false
+            WHERE "masjidId" = $1 AND "isDefault" = true
+          )
+          UPDATE "ContentSchedule"
+          SET "isDefault" = true, "isActive" = true
+          WHERE "id" = $2`,
+          masjidId,
+          scheduleId
+        );
+
+        // Return the complete schedule with items
+        return await tx.contentSchedule.findFirst({
+          where: { id: scheduleId },
+          include: {
+            items: {
+              include: {
+                contentItem: true
+              },
+              orderBy: {
+                order: 'asc'
+              }
             }
           }
-        }
+        });
       });
-    });
+    } catch (error) {
+      console.error('Error in setDefault:', error);
+      throw error;
+    }
   }
 
   /**
@@ -283,6 +329,90 @@ export class ContentScheduleService {
           }
         }
       }
+    });
+  }
+
+  /**
+   * Updates an existing content schedule
+   * @param masjidId The ID of the masjid
+   * @param scheduleId The ID of the schedule to update
+   * @param data The updated schedule data
+   * @returns The updated schedule
+   */
+  static async updateSchedule(
+    masjidId: string,
+    scheduleId: string,
+    data: UpdateContentScheduleDTO
+  ): Promise<ContentScheduleType> {
+    // Get the existing schedule
+    const existingSchedule = await (prisma as any).contentSchedule.findFirst({
+      where: {
+        id: scheduleId,
+        masjidId
+      },
+      include: {
+        items: true
+      }
+    });
+
+    if (!existingSchedule) {
+      throw new Error('Schedule not found');
+    }
+
+    // Prepare data for update
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    // Start a transaction for the update
+    return await prisma.$transaction(async (tx) => {
+      // First update the basic schedule data
+      const updatedSchedule = await (tx as any).contentSchedule.update({
+        where: { id: scheduleId },
+        data: updateData,
+      });
+
+      // If slides are provided and valid, update the items
+      if (data.slides && data.slides.length > 0) {
+        // Check if the slides contain placeholders
+        const hasPlaceholders = data.slides.some(slide => 
+          slide.id.startsWith('placeholder') || !slide.id.match(/^[0-9a-f]{24}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+        );
+
+        if (!hasPlaceholders) {
+          // Delete existing items
+          await (tx as any).contentScheduleItem.deleteMany({
+            where: { scheduleId }
+          });
+
+          // Create new items
+          await Promise.all(data.slides.map(async (slide, index) => {
+            await (tx as any).contentScheduleItem.create({
+              data: {
+                scheduleId,
+                contentItemId: slide.id,
+                order: index
+              }
+            });
+          }));
+        }
+      }
+
+      // Return the updated schedule with items
+      return await (tx as any).contentSchedule.findFirst({
+        where: { id: scheduleId },
+        include: {
+          items: {
+            include: {
+              contentItem: true
+            },
+            orderBy: {
+              order: 'asc'
+            }
+          }
+        }
+      });
     });
   }
 } 

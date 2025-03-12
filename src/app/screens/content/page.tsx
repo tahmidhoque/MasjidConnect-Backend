@@ -150,18 +150,17 @@ function ContentManagementContent() {
         name: 'New Schedule',
         description: '',
         isActive: true,
-        slides: [
-          { id: 'placeholder1', type: CONTENT_TYPES.VERSE_HADITH, duration: 20 },
-          { id: 'placeholder2', type: CONTENT_TYPES.ANNOUNCEMENT, duration: 20 },
-          { id: 'placeholder3', type: CONTENT_TYPES.EVENT, duration: 20 }
-        ]
+        slides: [] // Don't include placeholder slides that will cause foreign key constraint issues
       });
       
       // Navigate to edit page if we have an ID
       if (newSchedule && newSchedule.id) {
+        // Show alert that content items need to be added
+        alert('Schedule created successfully. Please add content items to it.');
         router.push(`/screens/content/${newSchedule.id}`);
       }
     } catch (error) {
+      console.error('Failed to create schedule:', error);
       alert('Failed to create new schedule. Please try again.');
     }
   };
@@ -293,6 +292,8 @@ function ContentManagementContent() {
                           size="small"
                           onClick={() => handleSetDefault(schedule.id)}
                           color="secondary"
+                          disabled={true}
+                          title="This feature is temporarily disabled due to a known issue"
                         >
                           Set as Default
                         </Button>

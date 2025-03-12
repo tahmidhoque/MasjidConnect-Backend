@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { SessionProvider } from 'next-auth/react';
 import theme from '@/lib/theme';
 import { UserProvider } from '@/contexts/UserContext';
+import { UnsavedChangesProvider } from '@/contexts/UnsavedChangesContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,9 +13,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <UserProvider>
-          <div suppressHydrationWarning>
-            {children}
-          </div>
+          <UnsavedChangesProvider>
+            <div suppressHydrationWarning>
+              {children}
+            </div>
+          </UnsavedChangesProvider>
         </UserProvider>
       </ThemeProvider>
     </SessionProvider>

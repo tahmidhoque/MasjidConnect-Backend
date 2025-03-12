@@ -55,6 +55,12 @@ model Masjid {
   timezone        String
   calculationMethod String   @default("MWL")
   madhab          String    @default("Hanafi")
+  prayerTimeSettings String? // Stored as JSON string
+  address         String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
   users           User[]
   prayerTimes     PrayerTime[]
   hadiths         Hadith[]

@@ -32,11 +32,15 @@ import {
   AlertTitle,
   Divider,
   Box as MuiBox,
+  Switch,
+  FormControlLabel,
+  InputAdornment,
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Close as CloseIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Close as CloseIcon, Download as DownloadIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import { format, parse } from 'date-fns';
 import { calculatePrayerTimes, generatePrayerTimesForMonth, generatePrayerTimesForYear } from '@/lib/prayer-times';
 import React from 'react';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 interface PrayerTime {
   date: Date;
@@ -159,6 +163,9 @@ export default function PrayerTimesAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
   
+  // Use the global unsaved changes context
+  const { hasUnsavedChanges, setHasUnsavedChanges, confirmNavigation } = useUnsavedChanges();
+  
   // Add a page title
   const pageTitle = "Prayer Times";
   
@@ -179,11 +186,48 @@ export default function PrayerTimesAdmin() {
       isha: 0,
     },
   });
+  
+  // Original calculation settings from database (for tracking changes)
+  const [originalSettings, setOriginalSettings] = useState(calculationSettings);
+
+  // Add new state variables for location mode
+  const [useManualCoordinates, setUseManualCoordinates] = useState(false);
+  const [masjidAddress, setMasjidAddress] = useState<string | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Load initial data
   React.useEffect(() => {
     fetchPrayerTimes();
+    fetchCalculationSettings();
+    fetchMasjidInfo();
   }, []);
+
+  // Check for unsaved changes when calculation settings change
+  React.useEffect(() => {
+    const hasChanges = JSON.stringify(calculationSettings) !== JSON.stringify(originalSettings);
+    setHasUnsavedChanges(hasChanges);
+  }, [calculationSettings, originalSettings, setHasUnsavedChanges]);
+
+  // Add function to fetch masjid info
+  const fetchMasjidInfo = async () => {
+    try {
+      setIsLoadingLocation(true);
+      const response = await fetch('/api/masjid/info');
+      if (!response.ok) {
+        throw new Error('Failed to fetch masjid info');
+      }
+      const data = await response.json();
+      
+      if (data.address) {
+        setMasjidAddress(data.address);
+      }
+      
+      setIsLoadingLocation(false);
+    } catch (err) {
+      console.error('Error fetching masjid info:', err);
+      setIsLoadingLocation(false);
+    }
+  };
 
   const fetchPrayerTimes = async () => {
     try {
@@ -196,8 +240,65 @@ export default function PrayerTimesAdmin() {
     }
   };
 
+  const fetchCalculationSettings = async () => {
+    try {
+      console.log('Fetching calculation settings...');
+      const response = await fetch('/api/prayer-times/settings');
+      if (!response.ok) {
+        console.error('Failed to fetch calculation settings:', response.status, response.statusText);
+        throw new Error('Failed to fetch calculation settings');
+      }
+      const data = await response.json();
+      console.log('Calculation settings received:', data);
+      
+      // Apply settings from database if available
+      if (data && Object.keys(data).length > 0) {
+        setCalculationSettings(data);
+        setOriginalSettings(data);
+        // Set the manual coordinates flag
+        setUseManualCoordinates(data.useManualCoordinates || false);
+        console.log('Applied calculation settings from database');
+      } else {
+        console.warn('No calculation settings found in database, using defaults');
+      }
+    } catch (err) {
+      console.error('Error in fetchCalculationSettings:', err);
+      setError('Failed to load calculation settings, using defaults');
+    }
+  };
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+    confirmNavigation(() => {
+      setActiveTab(newValue);
+    });
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const settingsToSave = {
+        ...calculationSettings,
+        useManualCoordinates,
+      };
+
+      const response = await fetch('/api/prayer-times/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settingsToSave),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      // Update original settings to match current settings
+      setOriginalSettings(calculationSettings);
+      setHasUnsavedChanges(false);
+      setError(null);
+    } catch (err) {
+      setError('Error saving calculation settings. Please try again.');
+    }
   };
 
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,9 +378,18 @@ export default function PrayerTimesAdmin() {
 
   const handleCalculate = () => {
     try {
-      const times = generatePrayerTimesForMonth(calculationSettings, calculationSettings.month, calculationSettings.year);
-      setPrayerTimes(times);
-      setError(null);
+      // If not using manual coordinates, fetch the latest masjid coordinates
+      if (!useManualCoordinates) {
+        fetchLatestMasjidCoordinates().then(() => {
+          const times = generatePrayerTimesForMonth(calculationSettings, calculationSettings.month, calculationSettings.year);
+          setPrayerTimes(times);
+          setError(null);
+        });
+      } else {
+        const times = generatePrayerTimesForMonth(calculationSettings, calculationSettings.month, calculationSettings.year);
+        setPrayerTimes(times);
+        setError(null);
+      }
     } catch (err) {
       setError('Error calculating prayer times. Please check your settings.');
     }
@@ -287,11 +397,46 @@ export default function PrayerTimesAdmin() {
 
   const handleCalculateYear = () => {
     try {
-      const times = generatePrayerTimesForYear(calculationSettings, calculationSettings.year);
-      setPrayerTimes(times);
-      setError(null);
+      // If not using manual coordinates, fetch the latest masjid coordinates
+      if (!useManualCoordinates) {
+        fetchLatestMasjidCoordinates().then(() => {
+          const times = generatePrayerTimesForYear(calculationSettings, calculationSettings.year);
+          setPrayerTimes(times);
+          setError(null);
+        });
+      } else {
+        const times = generatePrayerTimesForYear(calculationSettings, calculationSettings.year);
+        setPrayerTimes(times);
+        setError(null);
+      }
     } catch (err) {
       setError('Error calculating prayer times for the year. Please check your settings.');
+    }
+  };
+
+  // Add function to fetch the latest masjid coordinates
+  const fetchLatestMasjidCoordinates = async () => {
+    try {
+      const response = await fetch('/api/masjid/info');
+      if (!response.ok) {
+        throw new Error('Failed to fetch masjid info');
+      }
+      const data = await response.json();
+      
+      if (data.latitude && data.longitude) {
+        // Update calculation settings with the latest masjid coordinates
+        setCalculationSettings(prev => ({
+          ...prev,
+          latitude: data.latitude,
+          longitude: data.longitude,
+        }));
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error fetching masjid coordinates:', err);
+      setError('Error fetching masjid coordinates. Using current values.');
+      return false;
     }
   };
 
@@ -369,6 +514,12 @@ export default function PrayerTimesAdmin() {
     }
   };
 
+  // Toggle between automatic and manual coordinates
+  const handleCoordinatesToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setUseManualCoordinates(event.target.checked);
+    setHasUnsavedChanges(true);
+  };
+
   // Display error message if there is an error
   if (fatalError) {
     return (
@@ -441,31 +592,89 @@ export default function PrayerTimesAdmin() {
             <Stack spacing={4}>
               <Typography variant="h5" fontWeight="medium">Calculation Settings</Typography>
               <Grid container spacing={3} sx={{ px: { xs: 0, sm: 1 } }}>
-                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                  <TextField
-                    label="Latitude"
-                    type="number"
-                    value={calculationSettings.latitude}
-                    onChange={(e) => setCalculationSettings({
-                      ...calculationSettings,
-                      latitude: parseFloat(e.target.value),
-                    })}
-                    fullWidth
-                    variant="outlined"
+                <Grid item xs={12}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={useManualCoordinates}
+                        onChange={handleCoordinatesToggle}
+                        color="primary"
+                      />
+                    }
+                    label="Use manual coordinates"
                   />
-                </Grid>
-                <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                  <TextField
-                    label="Longitude"
-                    type="number"
-                    value={calculationSettings.longitude}
-                    onChange={(e) => setCalculationSettings({
-                      ...calculationSettings,
-                      longitude: parseFloat(e.target.value),
-                    })}
-                    fullWidth
-                    variant="outlined"
-                  />
+                  
+                  {!useManualCoordinates && masjidAddress && (
+                    <Alert 
+                      severity="info" 
+                      icon={<LocationIcon />}
+                      sx={{ mt: 2, display: 'flex', alignItems: 'center' }}
+                    >
+                      <AlertTitle>Using Masjid Location</AlertTitle>
+                      <Typography variant="body2">
+                        {masjidAddress}
+                      </Typography>
+                    </Alert>
+                  )}
+                  
+                  {!useManualCoordinates && !masjidAddress && (
+                    <Alert 
+                      severity="warning"
+                      sx={{ mt: 2 }}
+                    >
+                      <AlertTitle>No Address Found</AlertTitle>
+                      <Typography variant="body2">
+                        Please update your masjid address in the settings or use manual coordinates.
+                      </Typography>
+                    </Alert>
+                  )}
+                  
+                  {useManualCoordinates && (
+                    <>
+                      <Grid container spacing={2} sx={{ mt: 1 }}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Latitude"
+                            type="number"
+                            value={calculationSettings.latitude}
+                            onChange={(e) => setCalculationSettings({
+                              ...calculationSettings,
+                              latitude: parseFloat(e.target.value),
+                            })}
+                            fullWidth
+                            variant="outlined"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <LocationIcon fontSize="small" />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            label="Longitude"
+                            type="number"
+                            value={calculationSettings.longitude}
+                            onChange={(e) => setCalculationSettings({
+                              ...calculationSettings,
+                              longitude: parseFloat(e.target.value),
+                            })}
+                            fullWidth
+                            variant="outlined"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start">
+                                  <LocationIcon fontSize="small" />
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                        </Grid>
+                      </Grid>
+                    </>
+                  )}
                 </Grid>
                 <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
                   <FormControl fullWidth variant="outlined">
@@ -576,6 +785,18 @@ export default function PrayerTimesAdmin() {
                   >
                     Calculate Year
                   </Button>
+                  {hasUnsavedChanges && (
+                    <Button 
+                      variant="contained" 
+                      color="secondary"
+                      onClick={handleSaveSettings}
+                      size="large"
+                      sx={{ px: 3, py: 1 }}
+                      startIcon={<SaveIcon />}
+                    >
+                      Save Settings
+                    </Button>
+                  )}
                 </Stack>
               </Box>
             </Stack>
