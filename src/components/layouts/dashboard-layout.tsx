@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import {
   Box,
   Drawer,
@@ -21,6 +21,11 @@ import {
   useMediaQuery,
   Container,
   Divider,
+  Menu,
+  MenuItem,
+  Collapse,
+  Skeleton,
+  Fade,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -33,11 +38,26 @@ import {
   ExitToApp as LogoutIcon,
   ScreenShare as ScreenIcon,
   Article as ContentIcon,
+  ExpandMore as ExpandMoreIcon,
+  ExpandLess as ExpandLessIcon,
+  AccountCircle as AccountCircleIcon,
 } from '@mui/icons-material';
+import { clearUserData } from '@/lib/auth-client';
+import { useUserContext } from '@/contexts/UserContext';
+import ClientOnly from '@/components/ClientOnly';
 
 const drawerWidth = 280;
 
-const menuItems = [
+// Define types
+interface MenuItem {
+  title: string;
+  path: string;
+  icon: React.ReactNode;
+  badge?: number;
+}
+
+// Filter out Profile and Masjid Details from main menu - they'll be in the user submenu
+const menuItems: MenuItem[] = [
   {
     title: 'Dashboard',
     path: '/dashboard',
@@ -58,46 +78,131 @@ const menuItems = [
     path: '/screens',
     icon: <ScreenIcon />,
   },
-  {
-    title: 'Masjid Details',
-    path: '/masjid',
-    icon: <MosqueIcon />,
-  },
-  {
-    title: 'Notifications',
-    path: '/notifications',
-    icon: <NotificationsIcon />,
-    badge: 3, // Example badge count
-  },
+  // {
+  //   title: 'Notifications',
+  //   path: '/notifications',
+  //   icon: <NotificationsIcon />,
+  //   badge: 3, // Example badge count
+  // },
   {
     title: 'General Settings',
     path: '/general-settings',
     icon: <SettingsIcon />,
   },
+];
+
+// User submenu items
+const userMenuItems: MenuItem[] = [
   {
     title: 'Profile',
     path: '/profile',
     icon: <PersonIcon />,
   },
+  {
+    title: 'Masjid Details',
+    path: '/masjid',
+    icon: <MosqueIcon />,
+  },
 ];
+
+// User Profile Component that only renders on client
+function UserProfileSection({ 
+  userName, 
+  masjidName, 
+  isLoading, 
+  isInitialized, 
+  userMenuOpen, 
+  handleUserMenuToggle,
+  session,
+  theme
+}) {
+  return (
+    <Box 
+      sx={{ 
+        flex: 1,
+        cursor: isInitialized ? 'pointer' : 'default',
+      }}
+      onClick={isInitialized ? handleUserMenuToggle : undefined}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        {isLoading && !userName ? (
+          <Skeleton
+            variant="text"
+            width="80%"
+            height={24}
+            sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }}
+            animation="pulse"
+          />
+        ) : (
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              color: 'white', 
+              fontWeight: 600, 
+              flexGrow: 1,
+              minWidth: '120px' 
+            }}
+          >
+            {userName || (session?.user?.name ? session.user.name : '')}
+          </Typography>
+        )}
+        {isInitialized ? (
+          userMenuOpen ? (
+            <ExpandLessIcon sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '1.2rem' }} />
+          ) : (
+            <ExpandMoreIcon sx={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '1.2rem' }} />
+          )
+        ) : null}
+      </Box>
+      
+      {isLoading && !masjidName ? (
+        <Skeleton
+          variant="text"
+          width="60%"
+          height={16}
+          sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }}
+          animation="pulse"
+        />
+      ) : (
+        <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+          {masjidName || ''}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Get user information from context instead of managing locally
+  const { masjidName, userName, isLoading, isInitialized } = useUserContext();
+  
+  // Local UI state
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleUserMenuToggle = () => {
+    setUserMenuOpen(!userMenuOpen);
+  };
+
   const handleLogout = async () => {
     try {
+      // Clear stored data on logout
+      clearUserData();
+      
       await signOut({ 
         redirect: true,
         callbackUrl: '/login?signOut=true'
@@ -108,54 +213,14 @@ export default function DashboardLayout({
     }
   };
 
-  const drawer = (
+  // Memoize the drawer component to prevent re-renders when navigating
+  const drawer = useMemo(() => (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Navigation section starts directly - Logo moved to main content */}
-      <List sx={{ flex: 1, px: 2 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.path} disablePadding sx={{ mb: 1 }}>
-            <ListItemButton
-              component="a"
-              href={item.path}
-              selected={pathname === item.path}
-              sx={{
-                borderRadius: 2,
-                '&.Mui-selected': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  },
-                },
-              }}
-            >
-              <ListItemIcon>
-                {item.badge ? (
-                  <Badge badgeContent={item.badge} color="error">
-                    {item.icon}
-                  </Badge>
-                ) : (
-                  item.icon
-                )}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.title}
-                sx={{
-                  '& .MuiListItemText-primary': {
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                  },
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-
-      {/* User Profile Section */}
+      {/* User Profile Section at the top */}
       <Box
         sx={{
           p: 2,
-          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           alignItems: 'center',
           gap: 2,
@@ -168,28 +233,163 @@ export default function DashboardLayout({
             height: 40,
           }}
         >
-          A
+          <AccountCircleIcon />
         </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 600 }}>
-            Admin User
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            Oxford Mosque
-          </Typography>
-        </Box>
-        <Tooltip title="Logout">
-          <IconButton 
-            size="small" 
-            sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
-            onClick={handleLogout}
-          >
-            <LogoutIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+        
+        {/* Wrap user profile in ClientOnly to prevent hydration issues */}
+        <ClientOnly fallback={
+          <Box sx={{ flex: 1 }}>
+            <Skeleton variant="text" width="80%" height={24} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+            <Skeleton variant="text" width="60%" height={16} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+          </Box>
+        }>
+          <UserProfileSection
+            userName={userName}
+            masjidName={masjidName}
+            isLoading={isLoading}
+            isInitialized={isInitialized}
+            userMenuOpen={userMenuOpen}
+            handleUserMenuToggle={handleUserMenuToggle}
+            session={session}
+            theme={theme}
+          />
+        </ClientOnly>
+      </Box>
+
+      {/* User dropdown menu - Wrap in ClientOnly */}
+      <ClientOnly>
+        <Collapse in={userMenuOpen && isInitialized} timeout="auto" unmountOnExit>
+          <List sx={{ pt: 0, pb: 1 }}>
+            {userMenuItems.map((item) => (
+              <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+                <ListItemButton
+                  component="a"
+                  href={item.path}
+                  selected={pathname === item.path}
+                  sx={{
+                    borderRadius: 2,
+                    py: 0.75,
+                    '&.Mui-selected': {
+                      bgcolor: 'rgba(255, 255, 255, 0.1)',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.15)',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 40 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.title}
+                    sx={{
+                      '& .MuiListItemText-primary': {
+                        fontSize: '0.9rem',
+                        fontWeight: 500,
+                      },
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+            <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+              <ListItemButton
+                onClick={handleLogout}
+                sx={{
+                  borderRadius: 2,
+                  py: 0.75,
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.15)',
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>
+                  <LogoutIcon />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Sign Out"
+                  sx={{
+                    '& .MuiListItemText-primary': {
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                    },
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          </List>
+        </Collapse>
+      </ClientOnly>
+
+      {/* Main navigation */}
+      <List sx={{ pt: 1, pb: 1, flexGrow: 1 }}>
+        {menuItems.map((item) => (
+          <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+            <ListItemButton
+              component="a"
+              href={item.path}
+              selected={pathname === item.path}
+              sx={{
+                borderRadius: 2,
+                py: 0.75,
+                '&.Mui-selected': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.15)',
+                  },
+                },
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.title}
+                sx={{
+                  '& .MuiListItemText-primary': {
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                  },
+                }}
+              />
+              {item.badge && (
+                <Badge 
+                  badgeContent={item.badge} 
+                  color="secondary"
+                  sx={{ mr: 0.5 }}
+                />
+              )}
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+
+      {/* Optional: Admin branding at the bottom */}
+      <Box sx={{ p: 2, mt: 'auto' }}>
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            color: 'rgba(255, 255, 255, 0.5)',
+            display: 'block',
+            textAlign: 'center',
+          }}
+        >
+          Masjid Admin Dashboard v1.0
+        </Typography>
       </Box>
     </Box>
-  );
+  ), [
+    theme, 
+    isInitialized, 
+    isLoading, 
+    userName, 
+    masjidName, 
+    userMenuOpen, 
+    pathname, 
+    handleUserMenuToggle, 
+    handleLogout,
+    session
+  ]);
 
   return (
     <Box sx={{ display: 'flex' }}>

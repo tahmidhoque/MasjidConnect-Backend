@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useCallback } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { 
   Box,
@@ -18,6 +18,7 @@ import {
   Link as MuiLink,
   CircularProgress
 } from '@mui/material'
+import { prefetchUserData } from '@/lib/auth-client'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -28,6 +29,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 function LoginForm() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -51,9 +53,37 @@ function LoginForm() {
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
-        redirect: true,
-        callbackUrl: '/dashboard'
-      })
+        redirect: false,
+      });
+      
+      if (result?.error) {
+        setError(result.error || 'Failed to sign in');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch user data
+      try {
+        // Get user and masjid data from API
+        const userResponse = await fetch('/api/auth/session');
+        if (userResponse.ok) {
+          const sessionData = await userResponse.json();
+          if (sessionData?.user?.id && sessionData?.user?.masjidId) {
+            // Prefetch and store user data
+            await prefetchUserData(
+              sessionData.user.id, 
+              sessionData.user.masjidId,
+              sessionData.user.name || 'User'
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error prefetching user data:', error);
+        // Continue with login even if prefetching fails
+      }
+      
+      // Redirect to dashboard
+      router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error)
       setError('An unexpected error occurred. Please try again.')

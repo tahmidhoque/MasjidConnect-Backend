@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Box,
@@ -70,7 +70,8 @@ export default function SettingsLayout({
     setMobileOpen(!mobileOpen);
   };
 
-  const drawer = (
+  // Memoize the drawer component to prevent re-renders during navigation
+  const drawer = useMemo(() => (
     <Box>
       <Box sx={{ p: 2 }}>
         <Typography variant="h6" fontWeight="bold">
@@ -97,7 +98,7 @@ export default function SettingsLayout({
         ))}
       </List>
     </Box>
-  );
+  ), [pathname, router, isMobile, handleDrawerToggle]);
 
   return (
     <Box sx={{ display: 'flex' }}>
