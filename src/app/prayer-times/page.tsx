@@ -699,7 +699,7 @@ export default function PrayerTimesAdmin() {
                       size="large"
                       sx={{ px: 3, py: 1 }}
                     >
-                      {saving ? 'Saving...' : 'Save to Database'}
+                      {saving ? 'Saving...' : 'Save'}
                     </Button>
                     
                     <Button 

@@ -55,7 +55,7 @@ export default function VerseHadithPage() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/content/verse-hadith');
+      const response = await fetch('/api/content/verse_hadith');
       if (!response.ok) throw new Error('Failed to fetch items');
       const data = await response.json();
       setItems(data);
@@ -101,8 +101,8 @@ export default function VerseHadithPage() {
   const handleSubmit = async () => {
     try {
       const url = editingItem 
-        ? `/api/content/verse-hadith/${editingItem.id}`
-        : '/api/content/verse-hadith';
+        ? `/api/content/verse_hadith/${editingItem.id}`
+        : '/api/content/verse_hadith';
       
       const response = await fetch(url, {
         method: editingItem ? 'PUT' : 'POST',
@@ -125,7 +125,7 @@ export default function VerseHadithPage() {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      const response = await fetch(`/api/content/verse-hadith/${id}`, {
+      const response = await fetch(`/api/content/verse_hadith/${id}`, {
         method: 'DELETE',
       });
 
