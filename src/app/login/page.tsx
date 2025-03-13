@@ -294,7 +294,7 @@ export default function LoginPage() {
           zIndex: 0,
           background: `linear-gradient(45deg, 
             ${alpha(theme.palette.primary.main, 0.65)}, 
-            ${alpha(theme.palette.secondary.main, 0.65)})`,
+            ${alpha(theme.palette.primary.main, 0.65)})`,
         }}
       />
 
