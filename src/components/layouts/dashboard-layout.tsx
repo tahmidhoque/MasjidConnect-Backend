@@ -199,62 +199,89 @@ export default function DashboardLayout({
   const drawer = useMemo(() => (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* User Profile Section at the top */}
-      <Box
-        sx={{
-          p: 2,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-        }}
-      >
-        <Avatar
+      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+        <Box
           sx={{
-            bgcolor: theme.palette.secondary.main,
-            width: 40,
-            height: 40,
+            p: 2,
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
           }}
         >
-          <AccountCircleIcon />
-        </Avatar>
-        
-        {/* Wrap user profile in ClientOnly to prevent hydration issues */}
-        <ClientOnly fallback={
-          <Box sx={{ flex: 1 }}>
-            <Skeleton variant="text" width="80%" height={24} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
-            <Skeleton variant="text" width="60%" height={16} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
-          </Box>
-        }>
-          <UserProfileSection {...userProfileData} />
-        </ClientOnly>
-      </Box>
+          <Avatar
+            sx={{
+              bgcolor: theme.palette.secondary.main,
+              width: 40,
+              height: 40,
+            }}
+          >
+            <AccountCircleIcon />
+          </Avatar>
+          
+          {/* Wrap user profile in ClientOnly to prevent hydration issues */}
+          <ClientOnly fallback={
+            <Box sx={{ flex: 1 }}>
+              <Skeleton variant="text" width="80%" height={24} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+              <Skeleton variant="text" width="60%" height={16} sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)' }} />
+            </Box>
+          }>
+            <UserProfileSection {...userProfileData} />
+          </ClientOnly>
+        </Box>
 
-      {/* User dropdown menu - Wrap in ClientOnly */}
-      <ClientOnly>
-        <Collapse in={userMenuOpen && isInitialized} timeout="auto" unmountOnExit>
-          <List sx={{ pt: 0, pb: 1 }}>
-            {userMenuItems.map((item) => (
-              <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+        {/* User dropdown menu - Wrap in ClientOnly */}
+        <ClientOnly>
+          <Collapse in={userMenuOpen && isInitialized} timeout="auto" unmountOnExit>
+            <List sx={{ pt: 0, pb: 1 }}>
+              {userMenuItems.map((item) => (
+                <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+                  <ListItemButton
+                    component="a"
+                    href={item.path}
+                    selected={pathname === item.path}
+                    sx={{
+                      borderRadius: 2,
+                      py: 0.75,
+                      '&.Mui-selected': {
+                        bgcolor: 'rgba(255, 255, 255, 0.1)',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.15)',
+                        },
+                      },
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40 }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={item.title}
+                      sx={{
+                        '& .MuiListItemText-primary': {
+                          fontSize: '0.9rem',
+                          fontWeight: 500,
+                        },
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              ))}
+              <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
                 <ListItemButton
-                  component="a"
-                  href={item.path}
-                  selected={pathname === item.path}
+                  onClick={handleLogout}
                   sx={{
                     borderRadius: 2,
                     py: 0.75,
-                    '&.Mui-selected': {
-                      bgcolor: 'rgba(255, 255, 255, 0.1)',
-                      '&:hover': {
-                        bgcolor: 'rgba(255, 255, 255, 0.15)',
-                      },
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.15)',
                     },
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 40 }}>
-                    {item.icon}
+                    <LogoutIcon />
                   </ListItemIcon>
                   <ListItemText 
-                    primary={item.title}
+                    primary="Sign Out"
                     sx={{
                       '& .MuiListItemText-primary': {
                         fontSize: '0.9rem',
@@ -264,41 +291,16 @@ export default function DashboardLayout({
                   />
                 </ListItemButton>
               </ListItem>
-            ))}
-            <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
-              <ListItemButton
-                onClick={handleLogout}
-                sx={{
-                  borderRadius: 2,
-                  py: 0.75,
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.15)',
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 40 }}>
-                  <LogoutIcon />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Sign Out"
-                  sx={{
-                    '& .MuiListItemText-primary': {
-                      fontSize: '0.9rem',
-                      fontWeight: 500,
-                    },
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          </List>
-        </Collapse>
-      </ClientOnly>
+            </List>
+          </Collapse>
+        </ClientOnly>
+      </Box>
 
       {/* Main navigation */}
-      <List sx={{ pt: 1, pb: 1, flexGrow: 1 }}>
+      <List sx={{ pt: 0.5, pb: 0.5, flexGrow: 1 }}>
         {mainMenuItems.map((item) => (
           <React.Fragment key={item.path}>
-            <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+            <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.25 }}>
               <ListItemButton
                 component={item.children ? 'button' : 'a'}
                 href={item.children ? undefined : item.path}
@@ -307,8 +309,9 @@ export default function DashboardLayout({
                   : undefined}
                 selected={pathname === item.path}
                 sx={{
-                  borderRadius: 2,
-                  py: 0.75,
+                  borderRadius: 1.5,
+                  py: 0.5,
+                  minHeight: '36px',
                   '&.Mui-selected': {
                     bgcolor: 'rgba(255, 255, 255, 0.1)',
                     '&:hover': {
@@ -317,31 +320,26 @@ export default function DashboardLayout({
                   },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40 }}>
+                <ListItemIcon sx={{ minWidth: 36 }}>
                   {item.icon}
                 </ListItemIcon>
                 <ListItemText 
                   primary={item.title}
                   sx={{
+                    my: 0,
                     '& .MuiListItemText-primary': {
-                      fontSize: '0.9rem',
+                      fontSize: '0.85rem',
                       fontWeight: 500,
+                      lineHeight: 1.2,
                     },
                   }}
                 />
-                {item.badge && (
-                  <Badge 
-                    badgeContent={item.badge} 
-                    color="secondary"
-                    sx={{ mr: 0.5 }}
-                  />
-                )}
                 {item.children && (
                   item.title === 'Content Management' ? (
                     contentMenuOpen ? (
                       <ExpandLessIcon 
                         sx={{ 
-                          fontSize: '1.2rem',
+                          fontSize: '1.1rem',
                           color: 'rgba(255, 255, 255, 0.7)',
                           transition: 'transform 0.2s',
                         }} 
@@ -349,7 +347,7 @@ export default function DashboardLayout({
                     ) : (
                       <ExpandMoreIcon 
                         sx={{ 
-                          fontSize: '1.2rem',
+                          fontSize: '1.1rem',
                           color: 'rgba(255, 255, 255, 0.7)',
                           transition: 'transform 0.2s',
                         }} 
@@ -367,7 +365,7 @@ export default function DashboardLayout({
                       <>
                         <Divider 
                           sx={{ 
-                            my: 1,
+                            my: 0.5,
                             borderColor: 'rgba(255, 255, 255, 0.1)',
                           }} 
                         />
@@ -375,24 +373,26 @@ export default function DashboardLayout({
                           variant="caption"
                           sx={{
                             px: 4,
-                            py: 0.5,
+                            py: 0.25,
                             display: 'block',
                             color: 'rgba(255, 255, 255, 0.5)',
                             fontWeight: 500,
+                            fontSize: '0.75rem',
                           }}
                         >
                           {child.title}
                         </Typography>
                       </>
                     ) : (
-                      <ListItem disablePadding sx={{ pl: 4, pr: 2, py: 0.5 }}>
+                      <ListItem disablePadding sx={{ pl: 4, pr: 2, py: 0.25 }}>
                         <ListItemButton
                           component="a"
                           href={child.path}
                           selected={pathname === child.path}
                           sx={{
-                            borderRadius: 2,
-                            py: 0.75,
+                            borderRadius: 1.5,
+                            py: 0.5,
+                            minHeight: '32px',
                             '&.Mui-selected': {
                               bgcolor: 'rgba(255, 255, 255, 0.1)',
                               '&:hover': {
@@ -401,15 +401,17 @@ export default function DashboardLayout({
                             },
                           }}
                         >
-                          <ListItemIcon sx={{ minWidth: 40 }}>
+                          <ListItemIcon sx={{ minWidth: 36 }}>
                             {child.icon}
                           </ListItemIcon>
                           <ListItemText
                             primary={child.title}
                             sx={{
+                              my: 0,
                               '& .MuiListItemText-primary': {
-                                fontSize: '0.9rem',
+                                fontSize: '0.8rem',
                                 fontWeight: 500,
+                                lineHeight: 1.2,
                               },
                             }}
                           />
@@ -434,7 +436,7 @@ export default function DashboardLayout({
             textAlign: 'center',
           }}
         >
-          Masjid Admin Dashboard v1.0
+          MasjidConnect v1.0
         </Typography>
       </Box>
     </Box>
