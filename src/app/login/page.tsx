@@ -70,34 +70,41 @@ function LoginForm() {
       try {
         // Get user and masjid data from API
         const userResponse = await fetch('/api/auth/session');
-        if (userResponse.ok) {
-          const sessionData = await userResponse.json();
-          if (sessionData?.user?.id && sessionData?.user?.masjidId) {
-            // Prefetch and store user data
-            await prefetchUserData(
-              sessionData.user.id, 
-              sessionData.user.masjidId,
-              sessionData.user.name || 'User'
-            );
-            
-            // Update UserContext immediately
-            setUserName(sessionData.user.name || 'User');
-            
-            // Fetch and set masjid name
-            const masjidResponse = await fetch(`/api/masjid/${sessionData.user.masjidId}`);
-            if (masjidResponse.ok) {
-              const masjidData = await masjidResponse.json();
-              setMasjidName(masjidData.name);
-            }
-          }
+        if (!userResponse.ok) {
+          throw new Error('Failed to fetch user session');
         }
+        
+        const sessionData = await userResponse.json();
+        if (!sessionData?.user?.id || !sessionData?.user?.masjidId) {
+          throw new Error('Invalid session data');
+        }
+
+        // Prefetch and store user data
+        await prefetchUserData(
+          sessionData.user.id, 
+          sessionData.user.masjidId,
+          sessionData.user.name || 'User'
+        );
+        
+        // Update UserContext immediately
+        setUserName(sessionData.user.name || 'User');
+        
+        // Fetch and set masjid name
+        const masjidResponse = await fetch(`/api/masjid/${sessionData.user.masjidId}`);
+        if (!masjidResponse.ok) {
+          throw new Error('Failed to fetch masjid data');
+        }
+        
+        const masjidData = await masjidResponse.json();
+        setMasjidName(masjidData.name);
+        
+        // Only redirect after all data is loaded
+        router.push('/dashboard');
       } catch (error) {
         console.error('Error prefetching user data:', error);
-        // Continue with login even if prefetching fails
+        setError('Failed to load user data. Please try again.');
+        setIsLoading(false);
       }
-      
-      // Redirect to dashboard
-      router.push('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       setError('An unexpected error occurred. Please try again.');

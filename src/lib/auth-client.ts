@@ -25,20 +25,25 @@ export async function prefetchUserData(userId: string, masjidId: string, userNam
     
     // Fetch masjid data
     const masjidResponse = await fetch(`/api/masjid/${masjidId}`);
-    if (masjidResponse.ok) {
-      const masjidData = await masjidResponse.json();
-      // Add timestamp to track cache freshness
-      const masjidWithTimestamp = {
-        ...masjidData,
-        timestamp: Date.now()
-      };
-      setLocalStorageItem('masjidData', masjidWithTimestamp);
+    if (!masjidResponse.ok) {
+      throw new Error('Failed to fetch masjid data');
     }
+    
+    const masjidData = await masjidResponse.json();
+    // Add timestamp to track cache freshness
+    const masjidWithTimestamp = {
+      ...masjidData,
+      timestamp: Date.now()
+    };
+    setLocalStorageItem('masjidData', masjidWithTimestamp);
 
     // Could add more prefetching here (user profile, preferences, etc.)
     
   } catch (error) {
     console.error('Error prefetching user data:', error);
+    // Clear any partially stored data
+    clearUserData();
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
 
