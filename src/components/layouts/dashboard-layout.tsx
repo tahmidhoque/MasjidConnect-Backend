@@ -1,48 +1,49 @@
 "use client";
 
-import { useState, useMemo, useCallback } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { signOut, useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { signOut, useSession } from 'next-auth/react';
+import Link from 'next/link';
 import {
+  AppBar,
   Box,
+  CssBaseline,
+  Divider,
   Drawer,
+  IconButton,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  IconButton,
+  Toolbar,
   Typography,
   Avatar,
-  Tooltip,
-  Badge,
-  useTheme,
   useMediaQuery,
-  Container,
-  Divider,
-  Menu,
-  MenuItem,
   Collapse,
   Skeleton,
-  Fade,
+  Container,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
-  ExitToApp as LogoutIcon,
-  AccountCircle as AccountCircleIcon,
+  ChevronLeft as ChevronLeftIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Logout as LogoutIcon,
+  AccountCircle as AccountCircleIcon,
 } from '@mui/icons-material';
-import { clearUserData } from '@/lib/auth-client';
+import { useTheme as useMuiTheme } from '@mui/material/styles';
+import { mainMenuItems, userMenuItems } from '@/lib/constants/menu-items';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import type { Session } from 'next-auth';
 import { useUserContext } from '@/contexts/UserContext';
 import ClientOnly from '@/components/ClientOnly';
-import React from 'react';
-import { mainMenuItems, userMenuItems } from '@/lib/constants/menu-items';
+import { clearUserData } from '@/lib/auth-client';
 
 const drawerWidth = 280;
 
-// Define interface for UserProfileSection props
 interface UserProfileSectionProps {
   userName: string | null;
   masjidName: string | null;
@@ -50,8 +51,8 @@ interface UserProfileSectionProps {
   isInitialized: boolean;
   userMenuOpen: boolean;
   handleUserMenuToggle: () => void;
-  session: any; // Using any for session since it's a complex type from next-auth
-  theme: any; // Using any for theme since it's from MUI
+  session: Session | null;
+  theme: ReturnType<typeof useMuiTheme>;
 }
 
 // Memoize the UserProfileSection component
@@ -134,7 +135,7 @@ export default function DashboardLayout({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [contentMenuOpen, setContentMenuOpen] = useState(false);
   
-  const theme = useTheme();
+  const theme = useMuiTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pathname = usePathname();
   const router = useRouter();

@@ -6,13 +6,11 @@ import {
   Settings as SettingsIcon,
   Person as PersonIcon,
   Business as BusinessIcon,
-  Logout as LogoutIcon,
   MenuBook as VerseIcon,
   Announcement as AnnouncementIcon,
   Event as EventIcon,
   Code as CustomIcon
 } from '@mui/icons-material';
-import { ReactNode } from 'react';
 
 // Define types
 // export interface MenuItem {

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
+// Use a namespace for the global augmentation
 declare global {
+  // eslint-disable-next-line no-var
   var cachedPrisma: PrismaClient;
 }
 
@@ -14,4 +16,6 @@ if (process.env.NODE_ENV === 'production') {
   prisma = global.cachedPrisma;
 }
 
-export const db = prisma; 
+export const db = prisma;
+
+let prismaClientSingleton: any; 

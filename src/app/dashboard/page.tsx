@@ -1,8 +1,8 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { Box, Container, Grid, Typography, Paper, CircularProgress } from '@mui/material';
-import { Suspense, useEffect } from 'react';
+import { Box, Grid, Typography, Paper, CircularProgress } from '@mui/material';
+import { Suspense } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { ScreenManagement } from '@/components/dashboard/ScreenManagement';
 import { ContentSchedules } from '@/components/dashboard/ContentSchedules';
@@ -73,7 +73,7 @@ export default function DashboardPage() {
           Dashboard
         </Typography>
         <Typography color="text.secondary">
-          Welcome back, {session?.user?.name || 'Admin'}. Here's the current status of your masjid.
+          Welcome back, {session?.user?.name || 'Admin'}. Here&apos;s the current status of your masjid.
         </Typography>
       </Box>
       

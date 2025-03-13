@@ -192,7 +192,7 @@ export default function AnnouncementPage() {
                 No announcements found
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Click the "Add New" button to create your first announcement.
+                Click the &quot;Add New&quot; button to create your first announcement.
               </Typography>
               <Button
                 variant="contained"

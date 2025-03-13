@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { CreateContentScheduleDTO } from '@/types/content-schedule';
 import { ContentScheduleService } from '@/lib/services/content-schedule-service';
 
 /**
  * GET /api/schedules
  * Returns all content schedules for the current user's masjid
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get the current session to determine the user and masjid
     const session = await getServerSession(authOptions);

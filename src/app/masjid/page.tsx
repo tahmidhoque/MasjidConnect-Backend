@@ -172,7 +172,6 @@ export default function MasjidSettings() {
         throw new Error('Failed to update masjid information');
       }
       
-      const updatedData = await response.json();
       
       // Update original data to reflect saved state
       setOriginalData(masjidData);
@@ -265,7 +264,7 @@ export default function MasjidSettings() {
             Masjid Details
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Update your masjid's information and contact details
+            Update your masjid&apos;s information and contact details
           </Typography>
         </Box>
         

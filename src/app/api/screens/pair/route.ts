@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { randomBytes } from 'crypto';
-import { Prisma } from '@prisma/client';
 
 // Admin enters code shown on display to pair it
 export async function POST(req: Request) {

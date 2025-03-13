@@ -20,6 +20,7 @@ export async function GET() {
     });
     return NextResponse.json(prayerTimes);
   } catch (error) {
+    console.error('Error fetching prayer times:', error);
     return NextResponse.json({ error: 'Failed to fetch prayer times' }, { status: 500 });
   }
 }
@@ -124,6 +125,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('Error deleting prayer time:', error);
     return NextResponse.json({ error: 'Failed to delete prayer time' }, { status: 500 });
   }
 } 

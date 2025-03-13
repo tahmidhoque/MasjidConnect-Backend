@@ -340,7 +340,7 @@ export default function CustomContentPage() {
                 No custom content found
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Click the "Add New" button to create your first custom content.
+                Click the &quot;Add New&quot; button to create your first custom content.
               </Typography>
               <Button
                 variant="contained"

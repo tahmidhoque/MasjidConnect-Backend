@@ -54,23 +54,31 @@ export default function ScreensPage() {
   const [pairingDialog, setPairingDialog] = useState(false);
   const [pairingCode, setPairingCode] = useState('');
   const [location, setLocation] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Fetch screens
-  const fetchScreens = async () => {
+  const fetchMasjidScreens = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/screens');
-      if (!response.ok) throw new Error('Failed to fetch screens');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch screens');
+      }
+      
       const data = await response.json();
       setScreens(data);
-    } catch (err) {
-      setError('Failed to load screens');
-    } finally {
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching screens:', error);
+      setError('Failed to load screens. Please try again.');
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchScreens();
+    fetchMasjidScreens();
   }, []);
 
   // Handle pairing
@@ -92,27 +100,37 @@ export default function ScreensPage() {
         throw new Error(data.error || 'Failed to pair device');
       }
       
-      await fetchScreens();
+      await fetchMasjidScreens();
       handleClosePairingDialog();
-    } catch (err) {
-      setPairingError(err instanceof Error ? err.message : 'Failed to pair device');
+    } catch (error) {
+      console.error('Error pairing device:', error);
+      setPairingError(error instanceof Error ? error.message : 'Failed to pair device');
     }
   };
 
   // Delete screen
-  const handleDelete = async (screen: Screen) => {
-    if (!confirm('Are you sure you want to delete this screen?')) return;
+  const deleteScreen = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this screen?')) {
+      return;
+    }
     
     try {
-      const response = await fetch(`/api/screens/${screen.id}`, {
+      setDeleting(true);
+      const response = await fetch(`/api/screens/${id}`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) throw new Error('Failed to delete screen');
       
-      await fetchScreens();
-    } catch (err) {
-      setError('Failed to delete screen');
+      if (!response.ok) {
+        throw new Error('Failed to delete screen');
+      }
+      
+      setScreens(prev => prev.filter(screen => screen.id !== id));
+      setDeleting(false);
+      setSuccess('Screen deleted successfully');
+    } catch (error) {
+      console.error('Error deleting screen:', error);
+      setError('Failed to delete screen. Please try again.');
+      setDeleting(false);
     }
   };
 
@@ -171,7 +189,7 @@ export default function ScreensPage() {
                   <Typography variant="h6" sx={{ flex: 1 }}>
                     {screen.name}
                   </Typography>
-                  <IconButton size="small" onClick={() => handleDelete(screen)}>
+                  <IconButton size="small" onClick={() => deleteScreen(screen.id)}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </Box>

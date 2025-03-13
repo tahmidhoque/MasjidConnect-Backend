@@ -31,14 +31,14 @@ import {
   Grid,
   AlertTitle,
   Divider,
-  Box as MuiBox,
   Switch,
   FormControlLabel,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, Save as SaveIcon, Close as CloseIcon, Download as DownloadIcon, LocationOn as LocationIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Save as SaveIcon, Download as DownloadIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import { format, parse } from 'date-fns';
-import { calculatePrayerTimes, generatePrayerTimesForMonth, generatePrayerTimesForYear } from '@/lib/prayer-times';
+import { generatePrayerTimesForMonth, generatePrayerTimesForYear } from '@/lib/prayer-times';
 import React from 'react';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
@@ -162,6 +162,7 @@ export default function PrayerTimesAdmin() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Use the global unsaved changes context
   const { hasUnsavedChanges, setHasUnsavedChanges, confirmNavigation } = useUnsavedChanges();
@@ -193,13 +194,23 @@ export default function PrayerTimesAdmin() {
   // Add new state variables for location mode
   const [useManualCoordinates, setUseManualCoordinates] = useState(false);
   const [masjidAddress, setMasjidAddress] = useState<string | null>(null);
-  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   // Load initial data
   React.useEffect(() => {
-    fetchPrayerTimes();
-    fetchCalculationSettings();
-    fetchMasjidInfo();
+    const loadAllData = async () => {
+      setIsLoading(true);
+      try {
+        await Promise.all([
+          fetchPrayerTimes(),
+          fetchCalculationSettings(),
+          fetchMasjidInfo()
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadAllData();
   }, []);
 
   // Check for unsaved changes when calculation settings change
@@ -211,7 +222,6 @@ export default function PrayerTimesAdmin() {
   // Add function to fetch masjid info
   const fetchMasjidInfo = async () => {
     try {
-      setIsLoadingLocation(true);
       const response = await fetch('/api/masjid/info');
       if (!response.ok) {
         throw new Error('Failed to fetch masjid info');
@@ -221,11 +231,8 @@ export default function PrayerTimesAdmin() {
       if (data.address) {
         setMasjidAddress(data.address);
       }
-      
-      setIsLoadingLocation(false);
-    } catch (err) {
-      console.error('Error fetching masjid info:', err);
-      setIsLoadingLocation(false);
+    } catch (error) {
+      console.error('Error fetching masjid info:', error);
     }
   };
 
@@ -235,7 +242,7 @@ export default function PrayerTimesAdmin() {
       if (!response.ok) throw new Error('Failed to fetch prayer times');
       const data = await response.json();
       setPrayerTimes(data);
-    } catch (err) {
+    } catch (error) {
       setFatalError('Failed to load prayer times');
     }
   };
@@ -261,8 +268,8 @@ export default function PrayerTimesAdmin() {
       } else {
         console.warn('No calculation settings found in database, using defaults');
       }
-    } catch (err) {
-      console.error('Error in fetchCalculationSettings:', err);
+    } catch (error) {
+      console.error('Error in fetchCalculationSettings:', error);
       setError('Failed to load calculation settings, using defaults');
     }
   };
@@ -296,7 +303,7 @@ export default function PrayerTimesAdmin() {
       setOriginalSettings(calculationSettings);
       setHasUnsavedChanges(false);
       setError(null);
-    } catch (err) {
+    } catch (error) {
       setError('Error saving calculation settings. Please try again.');
     }
   };
@@ -321,21 +328,21 @@ export default function PrayerTimesAdmin() {
 
       // Parse CSV data
       const parsedTimes = rows.slice(1).map(row => {
-        const timeObj: any = {};
+        const timeObj: Record<string, any> = {}; // Use Record for dynamic property access
         headers.forEach((header: string, index: number) => {
           if (header === 'Date') {
             try {
-              let date;
+              let date: Date;
               try {
-                date = parse(row[index], 'MM/dd/yyyy', new Date());
+                date = parse(row[index], 'yyyy-MM-dd', new Date());
                 if (isNaN(date.getTime())) {
-                  date = parse(row[index], 'dd/MM/yyyy', new Date());
+                  date = parse(row[index], 'MM/dd/yyyy', new Date());
                 }
               } catch {
                 date = parse(row[index], 'dd/MM/yyyy', new Date());
               }
               timeObj.date = date;
-            } catch (err) {
+            } catch (error) {
               throw new Error(`Invalid date format in row: ${row.join(', ')}`);
             }
           } else {
@@ -351,8 +358,9 @@ export default function PrayerTimesAdmin() {
             throw new Error(`Invalid time format for ${field} in row: ${row.join(', ')}`);
           }
         });
-
-        return timeObj;
+        
+        // Cast the dynamically built object to PrayerTime
+        return timeObj as unknown as PrayerTime;
       });
 
       // Save to database
@@ -390,7 +398,8 @@ export default function PrayerTimesAdmin() {
         setPrayerTimes(times);
         setError(null);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error calculating prayer times:', error);
       setError('Error calculating prayer times. Please check your settings.');
     }
   };
@@ -409,7 +418,8 @@ export default function PrayerTimesAdmin() {
         setPrayerTimes(times);
         setError(null);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error calculating prayer times for the year:', error);
       setError('Error calculating prayer times for the year. Please check your settings.');
     }
   };
@@ -433,16 +443,11 @@ export default function PrayerTimesAdmin() {
         return true;
       }
       return false;
-    } catch (err) {
-      console.error('Error fetching masjid coordinates:', err);
-      setError('Error fetching masjid coordinates. Using current values.');
+    } catch (error) {
+      console.error('Error fetching masjid coordinates:', error);
+      setError('Failed to fetch masjid coordinates. Please enter them manually.');
       return false;
     }
-  };
-
-  const handleEditTime = (time: PrayerTime) => {
-    setSelectedTime(time);
-    setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = async () => {
@@ -464,7 +469,7 @@ export default function PrayerTimesAdmin() {
       await fetchPrayerTimes();
       setIsEditDialogOpen(false);
       setSelectedTime(null);
-    } catch (err) {
+    } catch (error) {
       setError('Error saving changes. Please try again.');
     }
   };
@@ -480,7 +485,7 @@ export default function PrayerTimesAdmin() {
       }
 
       await fetchPrayerTimes();
-    } catch (err) {
+    } catch (error) {
       setError('Error deleting entry. Please try again.');
     }
   };
@@ -509,7 +514,7 @@ export default function PrayerTimesAdmin() {
 
       await fetchPrayerTimes();
       setError(null);
-    } catch (err) {
+    } catch (error) {
       setError('Error saving changes. Please try again.');
     }
   };
@@ -520,26 +525,20 @@ export default function PrayerTimesAdmin() {
     setHasUnsavedChanges(true);
   };
 
-  // Display error message if there is an error
+  // Component render
   if (fatalError) {
     return (
-      <Box sx={{ width: '100%', p: 3 }}>
-        {/* Page Title */}
-        <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 'bold' }}>
-          {pageTitle}
-        </Typography>
-        
-        <Alert severity="error" sx={{ mb: 2 }}>
-          <Typography variant="h6">Error</Typography>
-          <Typography variant="body2">{fatalError}</Typography>
-          <Button 
-            onClick={() => window.location.reload()} 
-            variant="outlined" 
-            sx={{ mt: 2 }}
-          >
-            Retry
-          </Button>
-        </Alert>
+      <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Alert severity="error">{fatalError}</Alert>
+      </Box>
+    );
+  }
+
+  // Show loading indicator when loading initial data
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
       </Box>
     );
   }

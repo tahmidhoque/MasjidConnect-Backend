@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, Suspense, useCallback } from 'react'
+import { useState, Suspense } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { signIn } from 'next-auth/react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useUserContext } from '@/contexts/UserContext'
 import { 
   Box,
-  Container,
   Typography,
   TextField,
   Button,
@@ -33,7 +32,6 @@ type LoginForm = z.infer<typeof loginSchema>
 
 function LoginForm() {
   const theme = useTheme();
-  const searchParams = useSearchParams()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -101,9 +99,9 @@ function LoginForm() {
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
-      console.error('Login error:', error)
-      setError('An unexpected error occurred. Please try again.')
-      setIsLoading(false)
+      console.error('Login error:', error);
+      setError('An unexpected error occurred. Please try again.');
+      setIsLoading(false);
     }
   }
 
@@ -247,6 +245,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   const theme = useTheme();
+  const router = useRouter()
   
   return (
     <Box
