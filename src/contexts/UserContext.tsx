@@ -30,6 +30,8 @@ interface UserContextType {
   userName: string | null;
   isLoading: boolean;
   isInitialized: boolean;
+  setMasjidName: (name: string) => void;
+  setUserName: (name: string) => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -142,7 +144,9 @@ function UserProviderInner({ children }: { children: ReactNode }) {
       masjidName, 
       userName, 
       isLoading, 
-      isInitialized 
+      isInitialized,
+      setMasjidName,
+      setUserName
     }}>
       {children}
     </UserContext.Provider>

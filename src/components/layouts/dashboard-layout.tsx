@@ -526,27 +526,19 @@ export default function DashboardLayout({
             </Box>
             
             {/* Unified MasjidConnect brand - right aligned */}
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', pr: 0.5 }}>
-              <Typography
-                variant="body2"
-                component="span"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.primary.main,
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', pr: 0.5, height: '48px' }}>
+              <Image
+                src="/images/logo-blue.svg"
+                alt="MasjidConnect Logo"
+                width={240}
+                height={100}
+                priority
+                style={{
+                  width: 'auto',
+                  height: '100%',
+                  objectFit: 'contain'
                 }}
-              >
-                Masjid
-              </Typography>
-              <Typography
-                variant="body2"
-                component="span"
-                sx={{
-                  fontWeight: 600,
-                  color: theme.palette.secondary.main,
-                }}
-              >
-                Connect
-              </Typography>
+              />
             </Box>
           </Box>
           <Divider sx={{ mt: 0.5, mb: 1.5 }} />

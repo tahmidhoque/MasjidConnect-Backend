@@ -8,6 +8,7 @@ import { signIn } from 'next-auth/react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useUserContext } from '@/contexts/UserContext'
 import { 
   Box,
   Container,
@@ -36,6 +37,7 @@ function LoginForm() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const { setMasjidName, setUserName } = useUserContext()
 
   const {
     control,
@@ -79,6 +81,16 @@ function LoginForm() {
               sessionData.user.masjidId,
               sessionData.user.name || 'User'
             );
+            
+            // Update UserContext immediately
+            setUserName(sessionData.user.name || 'User');
+            
+            // Fetch and set masjid name
+            const masjidResponse = await fetch(`/api/masjid/${sessionData.user.masjidId}`);
+            if (masjidResponse.ok) {
+              const masjidData = await masjidResponse.json();
+              setMasjidName(masjidData.name);
+            }
           }
         }
       } catch (error) {
@@ -310,27 +322,27 @@ export default function LoginPage() {
             p: { xs: 3, sm: 6 },
           }}
         >
-          <Box sx={{ mb: 5, display: 'flex', alignItems: 'center' }}>
-            <Typography
-              component="span"
-              variant="h5"
-              sx={{ 
-                fontWeight: 600,
-                color: theme.palette.primary.main,
+          <Box sx={{ 
+            mb: 8, // Increased margin bottom for more space between logo and text
+            mt: -4, // Added negative margin top to optically center in the white space
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '100%',
+            height: 160 // Increased height for more vertical space
+          }}>
+            <Image
+              src="/images/logo-blue.svg"
+              alt="MasjidConnect Logo"
+              width={150}
+              height={150}
+              priority
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                objectFit: 'contain'
               }}
-            >
-              Masjid
-            </Typography>
-            <Typography
-              component="span"
-              variant="h5"
-              sx={{ 
-                fontWeight: 600,
-                color: theme.palette.secondary.main,
-              }}
-            >
-              Connect
-            </Typography>
+            />
           </Box>
 
           <Typography 
