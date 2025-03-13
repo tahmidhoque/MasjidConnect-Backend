@@ -25,6 +25,7 @@ export interface MenuItem {
 }
 
 // Main menu items
+// Note: General Settings feature is temporarily disabled and will be implemented in a future update
 export const mainMenuItems: MenuItem[] = [
   {
     title: 'Dashboard',
@@ -78,11 +79,6 @@ export const mainMenuItems: MenuItem[] = [
     title: 'Display Screens',
     path: '/screens',
     icon: <ScreenIcon />,
-  },
-  {
-    title: 'General Settings',
-    path: '/general-settings',
-    icon: <SettingsIcon />,
   },
 ];
 
