@@ -2,45 +2,37 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { ContentScheduleService } from '@/lib/services/content-schedule-service';
-import { ToggleActiveDTO } from '@/types/content-schedule';
 
 /**
- * Toggles a schedule's active status
- * @param req Request containing the toggle data
+ * Sets a schedule as the default
+ * @param req Request object
  * @param params Route parameters containing the schedule ID
  * @returns The updated schedule
  */
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-): Promise<NextResponse> {
+export async function PATCH(req, { params }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const masjidId = (session.user as any).masjidId;
+    const masjidId = session.user.masjidId;
     if (!masjidId) {
       return NextResponse.json({ error: 'Masjid not found' }, { status: 404 });
     }
 
-    const data: ToggleActiveDTO = await req.json();
-    const updatedSchedule = await ContentScheduleService.toggleActive(
+    const updatedSchedule = await ContentScheduleService.setDefault(
       masjidId,
-      params.id,
-      data.isActive
+      params.id
     );
     
     return NextResponse.json(updatedSchedule);
   } catch (error) {
-    console.error('Failed to update schedule status:', error);
+    console.error('Failed to set default schedule:', error);
     
     if (error instanceof Error) {
       if (error.message === 'Schedule not found') {
         return NextResponse.json({ error: error.message }, { status: 404 });
-      } else if (error.message === 'Cannot deactivate default schedule') {
-        return NextResponse.json({ error: error.message }, { status: 400 });
       }
     }
     

@@ -7,10 +7,7 @@ import { authOptions } from '@/lib/auth';
  * GET /api/masjid/[id]
  * Fetches masjid information by ID
  */
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request, { params }) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);

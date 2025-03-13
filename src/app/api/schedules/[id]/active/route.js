@@ -1,25 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { ContentScheduleService } from '@/lib/services/content-schedule-service';
 
-export interface RouteContext {
-  params: {
-    id: string;
-  };
-}
-
 /**
- * POST /api/schedules/:id/duplicate
- * Duplicate a schedule
+ * POST /api/schedules/:id/active
+ * Toggle a schedule's active status
  */
-export async function POST(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function POST(request, { params }) {
   try {
-    // Extract scheduleId safely from the context
-    const scheduleId = context.params?.id;
+    // Extract scheduleId safely from the params
+    const scheduleId = params?.id;
     
     if (!scheduleId) {
       return NextResponse.json(
@@ -43,26 +34,26 @@ export async function POST(
     
     // Parse the request body
     const data = await request.json();
-    const { name } = data;
+    const { isActive } = data;
     
-    if (!name || typeof name !== 'string') {
+    if (typeof isActive !== 'boolean') {
       return NextResponse.json(
-        { error: 'Name is required and must be a string' }, 
+        { error: 'isActive is required and must be a boolean' }, 
         { status: 400 }
       );
     }
     
     try {
-      // Duplicate the schedule
-      const newSchedule = await ContentScheduleService.duplicateSchedule(
+      // Update the schedule active status
+      const updatedSchedule = await ContentScheduleService.toggleActive(
         masjidId,
         scheduleId,
-        name
+        isActive
       );
       
-      return NextResponse.json(newSchedule, { status: 201 });
+      return NextResponse.json(updatedSchedule);
     } catch (serviceError) {
-      console.error('Error in ContentScheduleService.duplicateSchedule:', serviceError);
+      console.error('Error in ContentScheduleService.toggleActive:', serviceError);
       
       if (serviceError instanceof Error) {
         return NextResponse.json(
@@ -74,7 +65,7 @@ export async function POST(
       throw serviceError; // Re-throw for the outer catch
     }
   } catch (error) {
-    console.error('Unhandled error duplicating schedule:', error);
+    console.error('Unhandled error toggling schedule active status:', error);
     
     if (error instanceof Error && error.message) {
       return NextResponse.json(
@@ -84,7 +75,7 @@ export async function POST(
     }
     
     return NextResponse.json(
-      { error: 'Failed to duplicate schedule' }, 
+      { error: 'Failed to toggle schedule active status' }, 
       { status: 500 }
     );
   }

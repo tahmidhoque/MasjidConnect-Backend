@@ -8,8 +8,8 @@ import { ContentScheduleService } from '@/lib/services/content-schedule-service'
  * Set a schedule as the default
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request,
+  { params }
 ) {
   try {
     // Get the current session to determine the user and masjid

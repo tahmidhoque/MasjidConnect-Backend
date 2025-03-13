@@ -18,7 +18,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 export default function AnnouncementContentPage() {
   const router = useRouter();
@@ -26,8 +27,8 @@ export default function AnnouncementContentPage() {
   const [content, setContent] = useState('');
   const [duration, setDuration] = useState('20');
   const [hasDateRange, setHasDateRange] = useState(false);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<dayjs.Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +45,7 @@ export default function AnnouncementContentPage() {
       return;
     }
 
-    if (hasDateRange && startDate && endDate && startDate > endDate) {
+    if (hasDateRange && startDate && endDate && startDate.isAfter(endDate)) {
       setError('End date must be after start date');
       return;
     }
@@ -64,8 +65,8 @@ export default function AnnouncementContentPage() {
           title,
           content,
           duration: parseInt(duration, 10),
-          startDate: hasDateRange ? startDate : null,
-          endDate: hasDateRange ? endDate : null,
+          startDate: hasDateRange ? startDate?.toISOString() : null,
+          endDate: hasDateRange ? endDate?.toISOString() : null,
           isActive: true,
         }),
       });
@@ -141,18 +142,18 @@ export default function AnnouncementContentPage() {
               </FormHelperText>
 
               {hasDateRange && (
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <Stack spacing={2}>
                     <DateTimePicker
                       label="Start Date"
                       value={startDate}
-                      onChange={(newValue: Date | null) => setStartDate(newValue)}
+                      onChange={(newValue) => setStartDate(newValue)}
                       sx={{ width: '100%' }}
                     />
                     <DateTimePicker
                       label="End Date"
                       value={endDate}
-                      onChange={(newValue: Date | null) => setEndDate(newValue)}
+                      onChange={(newValue) => setEndDate(newValue)}
                       sx={{ width: '100%' }}
                     />
                   </Stack>

@@ -15,17 +15,17 @@ import {
 import { ReactNode } from 'react';
 
 // Define types
-export interface MenuItem {
-  title: string;
-  path: string;
-  icon: ReactNode;
-  badge?: number;
-  children?: MenuItem[];
-  divider?: boolean;
-}
+// export interface MenuItem {
+//   title: string;
+//   path: string;
+//   icon: ReactNode;
+//   badge?: number;
+//   children?: MenuItem[];
+//   divider?: boolean;
+// }
 
 // Main menu items
-export const mainMenuItems: MenuItem[] = [
+export const mainMenuItems = [
   {
     title: 'Dashboard',
     path: '/dashboard',
@@ -87,7 +87,7 @@ export const mainMenuItems: MenuItem[] = [
 ];
 
 // User submenu items
-export const userMenuItems: MenuItem[] = [
+export const userMenuItems = [
   {
     title: 'Profile',
     path: '/profile',

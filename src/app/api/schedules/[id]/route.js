@@ -1,25 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { ContentScheduleService } from '@/lib/services/content-schedule-service';
-
-export interface RouteContext {
-  params: {
-    id: string;
-  };
-}
 
 /**
  * GET /api/schedules/:id
  * Get a specific content schedule by ID
  */
-export async function GET(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function GET(request, { params }) {
   try {
-    // Extract scheduleId safely from the context
-    const scheduleId = context.params?.id;
+    // Extract scheduleId safely from the params
+    const scheduleId = params?.id;
     
     if (!scheduleId) {
       return NextResponse.json(
@@ -74,13 +65,10 @@ export async function GET(
  * PATCH /api/schedules/:id
  * Update a content schedule
  */
-export async function PATCH(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function PATCH(request, { params }) {
   try {
-    // Extract scheduleId safely from the context
-    const scheduleId = context.params?.id;
+    // Extract scheduleId safely from the params
+    const scheduleId = params?.id;
     
     if (!scheduleId) {
       return NextResponse.json(
@@ -140,13 +128,10 @@ export async function PATCH(
  * DELETE /api/schedules/:id
  * Delete a content schedule
  */
-export async function DELETE(
-  request: NextRequest,
-  context: RouteContext
-) {
+export async function DELETE(request, { params }) {
   try {
-    // Extract scheduleId safely from the context
-    const scheduleId = context.params?.id;
+    // Extract scheduleId safely from the params
+    const scheduleId = params?.id;
     
     if (!scheduleId) {
       return NextResponse.json(

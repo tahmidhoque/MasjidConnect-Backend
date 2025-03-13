@@ -16,14 +16,15 @@ import {
 import { useRouter } from 'next/navigation';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 
 export default function EventContentPage() {
   const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
-  const [eventDate, setEventDate] = useState<Date | null>(null);
+  const [eventDate, setEventDate] = useState<dayjs.Dayjs | null>(null);
   const [duration, setDuration] = useState('20');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function EventContentPage() {
           content: description,
           meta: {
             location,
-            eventDate,
+            eventDate: eventDate.toISOString(),
           },
           duration: parseInt(duration, 10),
           isActive: true,
@@ -113,11 +114,11 @@ export default function EventContentPage() {
                 placeholder="e.g., Main Hall, Classroom #3"
               />
 
-              <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
                 <DateTimePicker
                   label="Event Date & Time"
                   value={eventDate}
-                  onChange={(newValue: Date | null) => setEventDate(newValue)}
+                  onChange={(newValue) => setEventDate(newValue)}
                   sx={{ width: '100%' }}
                 />
               </LocalizationProvider>
