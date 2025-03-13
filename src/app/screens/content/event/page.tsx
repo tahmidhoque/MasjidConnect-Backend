@@ -181,76 +181,107 @@ export default function EventPage() {
       )}
 
       <Grid container spacing={2}>
-        {items.map((item) => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {item.title}
-                  {item.isHighlighted && (
-                    <Tooltip title="Highlighted Event">
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-block',
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: 'primary.main',
-                          ml: 1,
-                          verticalAlign: 'middle',
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    mb: 1,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {item.description}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
-                  <LocationIcon fontSize="small" color="action" />
-                  <Typography variant="caption" color="text.secondary">
-                    {item.location}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <TimeIcon fontSize="small" color="action" />
-                  <Typography variant="caption" color="text.secondary">
-                    {new Date(item.date).toLocaleDateString()} at {item.time}
-                  </Typography>
-                </Box>
-              </CardContent>
-              <CardActions>
-                <Tooltip title="Edit">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenModal(item)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </CardActions>
-            </Card>
+        {items.length === 0 ? (
+          <Grid item xs={12}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No events found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click the "Add New" button to create your first event.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenModal()}
+              >
+                Add New
+              </Button>
+            </Box>
           </Grid>
-        ))}
+        ) : (
+          items.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="h2" gutterBottom>
+                    {item.title}
+                    {item.isHighlighted && (
+                      <Tooltip title="Highlighted Event">
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'inline-block',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'primary.main',
+                            ml: 1,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.description}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
+                    <LocationIcon fontSize="small" color="action" />
+                    <Typography variant="caption" color="text.secondary">
+                      {item.location}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <TimeIcon fontSize="small" color="action" />
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(item.date).toLocaleDateString()} at {item.time}
+                    </Typography>
+                  </Box>
+                </CardContent>
+                <CardActions>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenModal(item)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       <Dialog

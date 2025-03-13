@@ -26,21 +26,145 @@ import {
   Delete as DeleteIcon,
   Close as CloseIcon,
   Timer as DurationIcon,
+  FormatBold,
+  FormatItalic,
+  FormatUnderlined,
+  FormatListBulleted,
+  FormatListNumbered,
+  Link as LinkIcon,
+  Code,
+  FormatClear,
+  Undo,
+  Redo,
 } from '@mui/icons-material';
-import dynamic from 'next/dynamic';
-import 'react-quill/dist/quill.snow.css';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 
-interface ReactQuillProps {
-  value: string;
-  onChange: (value: string) => void;
-  style?: React.CSSProperties;
-}
+const MenuBar = ({ editor }: { editor: any }) => {
+  if (!editor) {
+    return null;
+  }
 
-// Import the rich text editor dynamically to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), {
-  ssr: false,
-  loading: () => <Box sx={{ height: 200, bgcolor: 'action.hover' }} />,
-}) as any; // Using any temporarily until we can properly type this
+  const ToolbarButton = ({ onClick, active, disabled, children, title }: any) => (
+    <IconButton
+      size="small"
+      onClick={onClick}
+      color={active ? "primary" : "default"}
+      disabled={disabled}
+      sx={{
+        borderRadius: 1,
+        '&.Mui-disabled': {
+          color: 'text.disabled',
+        },
+      }}
+      title={title}
+    >
+      {children}
+    </IconButton>
+  );
+
+  const Divider = () => (
+    <Box
+      sx={{
+        height: 16,
+        width: 0.5,
+        bgcolor: 'divider',
+        mx: 0.5,
+        opacity: 0.5,
+      }}
+    />
+  );
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        gap: 0.25,
+        p: 0.5,
+        bgcolor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider',
+        alignItems: 'center',
+      }}
+    >
+      {/* History Controls */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().undo()}
+        title="Undo"
+      >
+        <Undo fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().redo()}
+        title="Redo"
+      >
+        <Redo fontSize="small" />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Text Formatting */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        active={editor.isActive('bold')}
+        title="Bold"
+      >
+        <FormatBold fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        active={editor.isActive('italic')}
+        title="Italic"
+      >
+        <FormatItalic fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        active={editor.isActive('underline')}
+        title="Underline"
+      >
+        <FormatUnderlined fontSize="small" />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Lists */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        active={editor.isActive('bulletList')}
+        title="Bullet List"
+      >
+        <FormatListBulleted fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        active={editor.isActive('orderedList')}
+        title="Numbered List"
+      >
+        <FormatListNumbered fontSize="small" />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Additional Controls */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleCode().run()}
+        active={editor.isActive('code')}
+        title="Code"
+      >
+        <Code fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+        title="Clear Formatting"
+      >
+        <FormatClear fontSize="small" />
+      </ToolbarButton>
+    </Box>
+  );
+};
 
 interface CustomContentItem {
   id: string;
@@ -64,6 +188,20 @@ export default function CustomContentPage() {
     duration: 30,
     isActive: true,
   });
+
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: formData.content,
+    onUpdate: ({ editor }) => {
+      setFormData({ ...formData, content: editor.getHTML() });
+    },
+  });
+
+  useEffect(() => {
+    if (editor && formData.content !== editor.getHTML()) {
+      editor.commands.setContent(formData.content);
+    }
+  }, [formData.content, editor]);
 
   useEffect(() => {
     fetchItems();
@@ -184,68 +322,99 @@ export default function CustomContentPage() {
       )}
 
       <Grid container spacing={2}>
-        {items.map((item) => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {item.title}
-                  {!item.isActive && (
-                    <Tooltip title="Inactive">
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-block',
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: 'text.disabled',
-                          ml: 1,
-                          verticalAlign: 'middle',
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </Typography>
-                <Box
-                  sx={{
-                    mb: 1,
-                    '& .ql-editor': {
-                      p: 0,
-                      maxHeight: 100,
-                      overflow: 'hidden',
-                    },
-                  }}
-                  dangerouslySetInnerHTML={{ __html: item.content }}
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <DurationIcon fontSize="small" color="action" />
-                  <Typography variant="caption" color="text.secondary">
-                    Duration: {item.duration} seconds
-                  </Typography>
-                </Box>
-              </CardContent>
-              <CardActions>
-                <Tooltip title="Edit">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenModal(item)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </CardActions>
-            </Card>
+        {items.length === 0 ? (
+          <Grid item xs={12}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No custom content found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click the "Add New" button to create your first custom content.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenModal()}
+              >
+                Add New
+              </Button>
+            </Box>
           </Grid>
-        ))}
+        ) : (
+          items.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="h2" gutterBottom>
+                    {item.title}
+                    {!item.isActive && (
+                      <Tooltip title="Inactive">
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'inline-block',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'text.disabled',
+                            ml: 1,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Typography>
+                  <Box
+                    sx={{
+                      mb: 1,
+                      '& .ql-editor': {
+                        p: 0,
+                        maxHeight: 100,
+                        overflow: 'hidden',
+                      },
+                    }}
+                    dangerouslySetInnerHTML={{ __html: item.content }}
+                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DurationIcon fontSize="small" color="action" />
+                    <Typography variant="caption" color="text.secondary">
+                      Duration: {item.duration} seconds
+                    </Typography>
+                  </Box>
+                </CardContent>
+                <CardActions>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenModal(item)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       <Dialog
@@ -275,11 +444,29 @@ export default function CustomContentPage() {
               <Typography variant="subtitle2" gutterBottom>
                 Content
               </Typography>
-              <ReactQuill
-                value={formData.content}
-                onChange={(content: string) => setFormData({ ...formData, content })}
-                style={{ height: 200, marginBottom: 50 }}
-              />
+              <Box sx={{ 
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+                overflow: 'hidden',
+                '& .ProseMirror': {
+                  minHeight: '200px',
+                  outline: 'none',
+                  p: 2,
+                  '&:focus': {
+                    outline: 'none',
+                  },
+                },
+                '& .ProseMirror p.is-editor-empty:first-of-type::before': {
+                  content: '"Start typing..."',
+                  color: 'text.disabled',
+                  pointerEvents: 'none',
+                  float: 'left',
+                },
+              }}>
+                <MenuBar editor={editor} />
+                <EditorContent editor={editor} />
+              </Box>
             </Box>
             <TextField
               label="Duration (seconds)"

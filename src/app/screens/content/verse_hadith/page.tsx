@@ -167,51 +167,82 @@ export default function VerseHadithPage() {
       )}
 
       <Grid container spacing={2}>
-        {items.map((item) => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {item.title}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    mb: 1,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {item.content}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Source: {item.source}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Tooltip title="Edit">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenModal(item)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </CardActions>
-            </Card>
+        {items.length === 0 ? (
+          <Grid item xs={12}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No verses or hadiths found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click the "Add New" button to create your first verse or hadith.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenModal()}
+              >
+                Add New
+              </Button>
+            </Box>
           </Grid>
-        ))}
+        ) : (
+          items.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="h2" gutterBottom>
+                    {item.title}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.content}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Source: {item.source}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenModal(item)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       <Dialog

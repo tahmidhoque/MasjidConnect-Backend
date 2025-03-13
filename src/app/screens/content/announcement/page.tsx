@@ -174,70 +174,101 @@ export default function AnnouncementPage() {
       )}
 
       <Grid container spacing={2}>
-        {items.map((item) => (
-          <Grid item xs={12} sm={6} md={4} key={item.id}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" component="h2" gutterBottom>
-                  {item.title}
-                  {item.isUrgent && (
-                    <Tooltip title="Urgent">
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-block',
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          bgcolor: 'error.main',
-                          ml: 1,
-                          verticalAlign: 'middle',
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    mb: 1,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {item.content}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  Start: {new Date(item.startDate).toLocaleDateString()}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" display="block">
-                  End: {new Date(item.endDate).toLocaleDateString()}
-                </Typography>
-              </CardContent>
-              <CardActions>
-                <Tooltip title="Edit">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleOpenModal(item)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Delete">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Tooltip>
-              </CardActions>
-            </Card>
+        {items.length === 0 ? (
+          <Grid item xs={12}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                bgcolor: 'background.paper',
+                borderRadius: 1,
+                textAlign: 'center',
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No announcements found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Click the "Add New" button to create your first announcement.
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenModal()}
+              >
+                Add New
+              </Button>
+            </Box>
           </Grid>
-        ))}
+        ) : (
+          items.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" component="h2" gutterBottom>
+                    {item.title}
+                    {item.isUrgent && (
+                      <Tooltip title="Urgent">
+                        <Box
+                          component="span"
+                          sx={{
+                            display: 'inline-block',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor: 'error.main',
+                            ml: 1,
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 1,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {item.content}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Start: {new Date(item.startDate).toLocaleDateString()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    End: {new Date(item.endDate).toLocaleDateString()}
+                  </Typography>
+                </CardContent>
+                <CardActions>
+                  <Tooltip title="Edit">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenModal(item)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))
+        )}
       </Grid>
 
       <Dialog
