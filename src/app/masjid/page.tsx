@@ -19,7 +19,9 @@ import {
   FormHelperText,
   FormLabel,
 } from '@mui/material';
+import { geocodeAddress } from '@/lib/geocoding';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import PageHeader from '@/components/layouts/page-header';
 
 interface MasjidFormData {
   name: string;
@@ -32,6 +34,8 @@ interface MasjidFormData {
   email: string;
   website: string;
   description: string;
+  latitude: number;
+  longitude: number;
 }
 
 export default function MasjidSettings() {
@@ -47,6 +51,8 @@ export default function MasjidSettings() {
     email: '',
     website: '',
     description: '',
+    latitude: 0,
+    longitude: 0,
   });
 
   // Track original data for unsaved changes
@@ -55,6 +61,7 @@ export default function MasjidSettings() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [geocodeLoading, setGeocodeLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof MasjidFormData, string>>>({});
@@ -88,15 +95,17 @@ export default function MasjidSettings() {
       
       const formattedData = {
         name: data.name || '',
-        address: data.addressComponents.address || '',
-        city: data.addressComponents.city || '',
-        state: data.addressComponents.state || '',
-        postalCode: data.addressComponents.postalCode || '',
-        country: data.addressComponents.country || '',
+        address: data.addressComponents?.address || '',
+        city: data.addressComponents?.city || '',
+        state: data.addressComponents?.state || '',
+        postalCode: data.addressComponents?.postalCode || '',
+        country: data.addressComponents?.country || '',
         phone: data.phone || '',
         email: data.email || '',
         website: data.website || '',
         description: data.description || '',
+        latitude: data.latitude || 0,
+        longitude: data.longitude || 0,
       };
       
       setMasjidData(formattedData);
@@ -193,7 +202,9 @@ export default function MasjidSettings() {
   ) => {
     setMasjidData((prev) => ({
       ...prev,
-      [field]: e.target.value,
+      [field]: field === 'latitude' || field === 'longitude' 
+        ? parseFloat(e.target.value) || 0 
+        : e.target.value,
     }));
     
     // Clear validation error for this field if it exists
@@ -202,6 +213,47 @@ export default function MasjidSettings() {
         ...prev,
         [field]: undefined,
       }));
+    }
+  };
+
+  const handleGeocodeAddress = async () => {
+    try {
+      setGeocodeLoading(true);
+      setError(null);
+      
+      // Construct full address
+      const addressParts = [];
+      if (masjidData.address) addressParts.push(masjidData.address);
+      if (masjidData.city) addressParts.push(masjidData.city);
+      if (masjidData.state) addressParts.push(masjidData.state);
+      if (masjidData.postalCode) addressParts.push(masjidData.postalCode);
+      if (masjidData.country) addressParts.push(masjidData.country);
+      
+      if (addressParts.length === 0) {
+        setError('Please enter an address to geocode');
+        setGeocodeLoading(false);
+        return;
+      }
+      
+      const fullAddress = addressParts.join(', ');
+      const result = await geocodeAddress(fullAddress);
+      
+      if (result.success) {
+        setMasjidData(prev => ({
+          ...prev,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        }));
+        setSuccess('Address geocoded successfully');
+      } else {
+        setError(`Failed to geocode address: ${result.error}`);
+      }
+      
+      setGeocodeLoading(false);
+    } catch (err) {
+      console.error('Error geocoding address:', err);
+      setError('An error occurred while geocoding the address');
+      setGeocodeLoading(false);
     }
   };
 
@@ -257,192 +309,132 @@ export default function MasjidSettings() {
   }
 
   return (
-    <Container maxWidth="lg">
-      <Stack spacing={4} mb={4}>
-        <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-            Masjid Details
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Update your masjid&apos;s information and contact details
-          </Typography>
-        </Box>
+    <>
+      <PageHeader title="Masjid Details" />
+      
+      <Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Update your masjid's information and contact details.
+        </Typography>
         
         {error && (
-          <Alert severity="error">
+          <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-      </Stack>
-      
-      <Card>
-        <CardContent sx={{ p: 4 }}>
-          <Stack spacing={3}>
-            <Box>
-              <Typography variant="h5" gutterBottom>
-                Basic Information
-              </Typography>
-              <Divider />
-            </Box>
-            
-            <form onSubmit={handleSubmit}>
-              <Stack spacing={4}>
-                <Box>
-                  {renderFormField('name', 'Masjid Name', true)}
-                  {renderFormField('address', 'Address', true)}
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <FormControl 
-                        error={!!validationErrors.city} 
-                        fullWidth 
-                        required
-                        sx={{ mb: 2 }}
-                      >
-                        <FormLabel 
-                          sx={{ 
-                            mb: 1,
-                            fontWeight: 500,
-                            color: 'text.primary',
-                            '&.Mui-focused': { color: 'text.primary' },
-                          }}
-                        >
-                          City
-                        </FormLabel>
-                        <TextField
-                          value={masjidData.city}
-                          onChange={handleInputChange('city')}
-                          fullWidth
-                          variant="outlined"
-                          size="small"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'background.paper',
-                            },
-                          }}
-                        />
-                        {validationErrors.city && (
-                          <FormHelperText>{validationErrors.city}</FormHelperText>
-                        )}
-                      </FormControl>
+        
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Stack spacing={3}>
+              <Box>
+                <Typography variant="h5" gutterBottom>
+                  Basic Information
+                </Typography>
+                <Divider />
+              </Box>
+              
+              <form onSubmit={handleSubmit}>
+                <Stack spacing={4}>
+                  <Box>
+                    {renderFormField('name', 'Masjid Name', true)}
+                    {renderFormField('address', 'Address', true)}
+                    
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={4}>
+                        {renderFormField('city', 'City', true)}
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        {renderFormField('state', 'State', true)}
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        {renderFormField('postalCode', 'Postal Code', true)}
+                      </Grid>
                     </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <FormControl 
-                        error={!!validationErrors.state} 
-                        fullWidth 
-                        required
-                        sx={{ mb: 2 }}
+
+                    {renderFormField('country', 'Country', true)}
+
+                    <Box mt={3} mb={2}>
+                      <Button 
+                        variant="outlined" 
+                        onClick={handleGeocodeAddress} 
+                        disabled={geocodeLoading}
+                        sx={{ mr: 2 }}
                       >
-                        <FormLabel 
-                          sx={{ 
-                            mb: 1,
-                            fontWeight: 500,
-                            color: 'text.primary',
-                            '&.Mui-focused': { color: 'text.primary' },
-                          }}
-                        >
-                          State
-                        </FormLabel>
-                        <TextField
-                          value={masjidData.state}
-                          onChange={handleInputChange('state')}
-                          fullWidth
-                          variant="outlined"
-                          size="small"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'background.paper',
-                            },
-                          }}
-                        />
-                        {validationErrors.state && (
-                          <FormHelperText>{validationErrors.state}</FormHelperText>
-                        )}
-                      </FormControl>
+                        {geocodeLoading ? <CircularProgress size={24} /> : 'Get Coordinates from Address'}
+                      </Button>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        This will automatically fill the coordinates based on the address you provided.
+                      </Typography>
+                    </Box>
+
+                    <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+                      Coordinates
+                    </Typography>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      These coordinates will be used for prayer time calculations.
+                    </Alert>
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        {renderFormField('latitude', 'Latitude', false, {
+                          type: 'number',
+                          InputProps: { inputProps: { step: 0.0001 } }
+                        })}
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        {renderFormField('longitude', 'Longitude', false, {
+                          type: 'number',
+                          InputProps: { inputProps: { step: 0.0001 } }
+                        })}
+                      </Grid>
                     </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <FormControl 
-                        error={!!validationErrors.postalCode} 
-                        fullWidth 
-                        required
-                        sx={{ mb: 2 }}
-                      >
-                        <FormLabel 
-                          sx={{ 
-                            mb: 1,
-                            fontWeight: 500,
-                            color: 'text.primary',
-                            '&.Mui-focused': { color: 'text.primary' },
-                          }}
-                        >
-                          Postal Code
-                        </FormLabel>
-                        <TextField
-                          value={masjidData.postalCode}
-                          onChange={handleInputChange('postalCode')}
-                          fullWidth
-                          variant="outlined"
-                          size="small"
-                          sx={{
-                            '& .MuiOutlinedInput-root': {
-                              backgroundColor: 'background.paper',
-                            },
-                          }}
-                        />
-                        {validationErrors.postalCode && (
-                          <FormHelperText>{validationErrors.postalCode}</FormHelperText>
-                        )}
-                      </FormControl>
-                    </Grid>
-                  </Grid>
-
-                  {renderFormField('country', 'Country', true)}
-                </Box>
-
-                <Box>
-                  <Typography variant="h6" gutterBottom>
-                    Contact Information
-                  </Typography>
-                  <Divider />
-                </Box>
-
-                <Box>
-                  {renderFormField('phone', 'Phone Number')}
-                  {renderFormField('email', 'Email', false, { type: 'email' })}
-                  {renderFormField('website', 'Website')}
-                  {renderFormField('description', 'Description', false, {
-                    multiline: true,
-                    rows: 4,
-                  })}
-
-                  <Box mt={4}>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      color="primary"
-                      size="large"
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving...' : 'Save Changes'}
-                    </Button>
                   </Box>
-                </Box>
-              </Stack>
-            </form>
-          </Stack>
-        </CardContent>
-      </Card>
 
-      <Snackbar
-        open={!!success}
-        autoHideDuration={6000}
-        onClose={() => setSuccess(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="success" onClose={() => setSuccess(null)}>
-          {success}
-        </Alert>
-      </Snackbar>
-    </Container>
+                  <Box>
+                    <Typography variant="h6" gutterBottom>
+                      Contact Information
+                    </Typography>
+                    <Divider />
+                  </Box>
+
+                  <Box>
+                    {renderFormField('phone', 'Phone Number')}
+                    {renderFormField('email', 'Email', false, { type: 'email' })}
+                    {renderFormField('website', 'Website')}
+                    {renderFormField('description', 'Description', false, {
+                      multiline: true,
+                      rows: 4,
+                    })}
+
+                    <Box mt={4}>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        size="large"
+                        disabled={saving}
+                      >
+                        {saving ? <CircularProgress size={24} /> : 'Save Changes'}
+                      </Button>
+                    </Box>
+                  </Box>
+                </Stack>
+              </form>
+            </Stack>
+          </CardContent>
+        </Card>
+
+        <Snackbar
+          open={!!success}
+          autoHideDuration={6000}
+          onClose={() => setSuccess(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity="success" onClose={() => setSuccess(null)}>
+            {success}
+          </Alert>
+        </Snackbar>
+      </Box>
+    </>
   );
 } 

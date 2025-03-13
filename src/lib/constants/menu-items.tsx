@@ -76,7 +76,7 @@ export const mainMenuItems: MenuItem[] = [
     ]
   },
   {
-    title: 'Display Screens',
+    title: 'Manage Screens',
     path: '/screens',
     icon: <ScreenIcon />,
   },

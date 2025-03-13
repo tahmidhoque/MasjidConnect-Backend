@@ -11,6 +11,7 @@ import { DashboardAlerts } from '@/components/dashboard/DashboardAlerts';
 import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import { DashboardData } from '@/types/dashboard';
 import { useRealtimeData } from '@/lib/hooks/useRealtimeData';
+import PageHeader from '@/components/layouts/page-header';
 
 async function fetchDashboardData(): Promise<DashboardData> {
   const response = await fetch('/api/dashboard', {
@@ -67,37 +68,11 @@ export default function DashboardPage() {
   const alertsCount = missingPrayerTimesAlert + data.alerts.offlineScreens.length;
 
   return (
-    <Box sx={{ py: 3 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Dashboard
-        </Typography>
-        <Typography color="text.secondary">
-          Welcome back, {session?.user?.name || 'Admin'}. Here&apos;s the current status of your masjid.
-        </Typography>
-      </Box>
-      
-      {/* Dashboard metrics */}
-      <DashboardMetrics 
-        metrics={[
-          { 
-            label: 'Online Screens', 
-            value: onlineScreensCount, 
-            total: totalScreens > 0 ? totalScreens : undefined, 
-            color: theme.palette.success.main 
-          },
-          { 
-            label: 'Active Schedules', 
-            value: schedulesCount, 
-            color: theme.palette.info.main 
-          },
-          { 
-            label: 'System Alerts', 
-            value: alertsCount, 
-            color: alertsCount > 0 ? theme.palette.error.main : theme.palette.success.main 
-          }
-        ]} 
-      />
+    <Box sx={{ flexGrow: 1 }}>
+      <PageHeader title="Dashboard" />
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+        Welcome to your MasjidConnect dashboard. Monitor your screens, content schedules, and system status.
+      </Typography>
       
       <Grid container spacing={3}>
         {/* System Alerts - Always show at the top */}

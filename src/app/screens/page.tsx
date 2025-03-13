@@ -162,7 +162,7 @@ export default function ScreensPage() {
     <Box>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" fontWeight="bold">
-          Display Screens
+          Screens
         </Typography>
         <Button
           variant="contained"

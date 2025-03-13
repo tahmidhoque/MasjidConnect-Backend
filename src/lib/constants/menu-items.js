@@ -73,7 +73,7 @@ export const mainMenuItems = [
     ]
   },
   {
-    title: 'Display Screens',
+    title: 'Screen Management',
     path: '/screens',
     icon: <ScreenIcon />,
   },

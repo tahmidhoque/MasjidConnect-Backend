@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import PageHeader from '@/components/layouts/page-header';
 
 interface ProfileFormData {
   name: string;
@@ -389,22 +390,18 @@ export default function ProfileSettings() {
 
   return (
     <Container maxWidth="lg">
-      <Stack spacing={4} mb={4}>
-        <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-            Profile Settings
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Manage your personal information and account security
-          </Typography>
-        </Box>
+      <Box sx={{ maxWidth: 1200, mx: 'auto', mt: 2 }}>
+        <PageHeader title="Profile Settings" />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Manage your personal information and account security.
+        </Typography>
         
         {error && (
           <Alert severity="error">
             {error}
           </Alert>
         )}
-      </Stack>
+      </Box>
       
       <Stack spacing={4}>
         <Card>

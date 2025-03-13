@@ -7,9 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  AppBar,
   Box,
-  CssBaseline,
   Divider,
   Drawer,
   IconButton,
@@ -18,7 +16,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Toolbar,
   Typography,
   Avatar,
   useMediaQuery,
@@ -36,13 +33,43 @@ import {
 } from '@mui/icons-material';
 import { useTheme as useMuiTheme } from '@mui/material/styles';
 import { mainMenuItems, userMenuItems } from '@/lib/constants/menu-items';
-import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import type { Session } from 'next-auth';
 import { useUserContext } from '@/contexts/UserContext';
 import ClientOnly from '@/components/ClientOnly';
 import { clearUserData } from '@/lib/auth-client';
+import PageHeader from './page-header';
 
 const drawerWidth = 280;
+
+
+// Replace the PageWrapper function with this simpler version
+function extractPageTitle(children: React.ReactNode): { title: string | null, content: React.ReactNode } {
+  let pageTitle: string | null = null;
+  let pageContent = children;
+
+  // Convert children to array
+  const childArray = React.Children.toArray(children);
+  
+  // Look for PageHeader component to extract title
+  const headerIdx = childArray.findIndex(child => 
+    React.isValidElement(child) && 
+    ((child.type === PageHeader) ||
+     (typeof child.type === 'function' && 
+      ((child.type as any).displayName === 'PageHeader' || 
+       (child.type as any).name === 'PageHeader')))
+  );
+  
+  if (headerIdx !== -1 && React.isValidElement(childArray[headerIdx])) {
+    // Found a PageHeader, extract its title
+    const headerElement = childArray[headerIdx] as React.ReactElement<{title?: string}>;
+    pageTitle = headerElement.props.title || null;
+    
+    // Filter out the PageHeader from content
+    pageContent = childArray.filter((_, i) => i !== headerIdx);
+  }
+  
+  return { title: pageTitle, content: pageContent };
+}
 
 interface UserProfileSectionProps {
   userName: string | null;
@@ -140,6 +167,25 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+
+  // Extract title and content using the simpler function
+  const extractedData = extractPageTitle(children);
+  const pageContent = extractedData.content;
+  
+  // Fallback title based on current route
+  const getTitleFromRoute = useCallback(() => {
+    if (pathname === '/dashboard') return 'Dashboard';
+    if (pathname === '/prayer-times') return 'Prayer Times';
+    if (pathname === '/masjid') return 'Masjid Details';
+    if (pathname === '/masjid/settings') return 'Masjid Settings';
+    if (pathname === '/profile') return 'Profile Settings';
+    if (pathname === '/screens') return 'Screen Management';
+    if (pathname.startsWith('/screens/content')) return 'Content Management';
+    return null;
+  }, [pathname]);
+  
+  // Use extracted title or fallback to route-based title
+  const pageTitle = extractedData.title || getTitleFromRoute();
 
   // Update contentMenuOpen when pathname changes
   React.useEffect(() => {
@@ -511,7 +557,7 @@ export default function DashboardLayout({
           position: 'relative',
         }}
       >
-        {/* Minimal header with brand name */}
+        {/* Header with brand name and page title */}
         <Container maxWidth="lg" sx={{ pt: 0, pb: 0 }}>
           <Box
             sx={{
@@ -519,23 +565,36 @@ export default function DashboardLayout({
               alignItems: 'center',
               justifyContent: 'space-between',
               py: 0.75,
+              mb: 0.5
             }}
           >
-            {/* Mobile menu button */}
-            <Box>
+            {/* Left side - Mobile menu and Page Title */}
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center' }}>
               <IconButton
                 color="inherit"
                 aria-label="open drawer"
                 edge="start"
                 onClick={handleDrawerToggle}
-                sx={{ display: { md: 'none' } }}
+                sx={{ display: { md: 'none' }, mr: 1 }}
               >
                 <MenuIcon />
               </IconButton>
+              {pageTitle ? (
+                <h1 style={{
+                  margin: 0,
+                  padding: '0 8px',
+                  lineHeight: '48px',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold',
+                  color: '#333333', // Primary blue color
+                }}>
+                  {pageTitle}
+                </h1>
+              ) : null}
             </Box>
             
-            {/* Unified MasjidConnect brand - right aligned */}
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', pr: 0.5, height: '48px' }}>
+            {/* Right side - MasjidConnect brand */}
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', ml: 3, height: '48px' }}>
               <Image
                 src="/images/logo-blue.svg"
                 alt="MasjidConnect Logo"
@@ -550,14 +609,12 @@ export default function DashboardLayout({
               />
             </Box>
           </Box>
-          <Divider sx={{ mt: 0.5, mb: 1.5 }} />
+          <Divider sx={{ mb: 2 }} />
         </Container>
 
-        {/* Page content */}
+        {/* Main content area */}
         <Container maxWidth="lg">
-          <Box>
-            {children}
-          </Box>
+          {pageContent}
         </Container>
       </Box>
     </Box>

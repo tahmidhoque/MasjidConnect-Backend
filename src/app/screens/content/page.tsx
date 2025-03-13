@@ -21,6 +21,7 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import { useContentSchedules } from '@/lib/hooks/use-content-schedules';
+import PageHeader from '@/components/layouts/page-header';
 
 // Content type constants
 const CONTENT_TYPES = {
@@ -206,12 +207,9 @@ function ContentManagementContent() {
   }
 
   return (
-    <Box sx={{ width: '100%', p: 3 }}>
-      {/* Page Title */}
-      <Typography variant="h4" component="h1" sx={{ mb: 4, fontWeight: 'bold' }}>
-        {pageTitle}
-      </Typography>
-
+    <Box sx={{ width: '100%' }}>
+      <PageHeader title={pageTitle} />
+      
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>
