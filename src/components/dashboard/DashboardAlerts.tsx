@@ -2,12 +2,14 @@ import { DashboardAlerts as AlertsType } from '@/types/dashboard';
 import { Paper, Box, Typography, Divider, Grid, Chip, Button } from '@mui/material';
 import { AlertTriangle as AlertTriangleIcon, WifiOff as WifiOffIcon, Calendar as CalendarIcon } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 interface DashboardAlertsProps {
   alerts: AlertsType;
 }
 
 export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
+  const router = useRouter();
   const { missingPrayerTimes, offlineScreens } = alerts;
   
   // Determine if we're running out of prayer times
@@ -18,6 +20,11 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
   
   const hasAlerts = hasLowPrayerTimes || offlineScreens.length > 0;
   const totalAlerts = (hasLowPrayerTimes ? 1 : 0) + offlineScreens.length;
+
+  const handleAddPrayerTimesClick = () => {
+    // Navigate to the prayer times management page
+    router.push('/prayer-times');
+  };
 
   return (
     <Paper
@@ -72,16 +79,34 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
             {offlineScreens.length > 0 && (
               <Grid item xs={12}>
                 <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <WifiOffIcon size={16} color="#d32f2f" />
-                    <Typography
-                      variant="subtitle1"
-                      fontWeight={600}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <WifiOffIcon size={16} color="#d32f2f" />
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={600}
+                        color="error"
+                        sx={{ ml: 1 }}
+                      >
+                        Offline Screens
+                      </Typography>
+                    </Box>
+                    <Button 
+                      variant="outlined" 
                       color="error"
-                      sx={{ ml: 1 }}
+                      size="small"
+                      sx={{ 
+                        borderColor: '#d32f2f',
+                        color: '#d32f2f',
+                        '&:hover': {
+                          borderColor: '#b71c1c',
+                          bgcolor: 'rgba(211, 47, 47, 0.04)',
+                        }
+                      }}
+                      onClick={() => router.push('/screens')}
                     >
-                      Offline Screens
-                    </Typography>
+                      Manage Screens
+                    </Button>
                   </Box>
                   {offlineScreens.map((screen) => (
                     <Box
@@ -153,10 +178,7 @@ export function DashboardAlerts({ alerts }: DashboardAlertsProps) {
                         bgcolor: 'rgba(211, 47, 47, 0.04)',
                       }
                     }}
-                    onClick={() => {
-                      // You can implement navigation to prayer times management page
-                      console.log('Add prayer times clicked');
-                    }}
+                    onClick={handleAddPrayerTimesClick}
                   >
                     Add Prayer Times
                   </Button>

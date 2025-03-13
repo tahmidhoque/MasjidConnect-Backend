@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Alert,
   IconButton,
   Tabs,
   Tab,
@@ -28,13 +27,14 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  SelectChangeEvent,
   Grid,
-  AlertTitle,
   Divider,
   Switch,
   FormControlLabel,
   InputAdornment,
   CircularProgress,
+  TablePagination,
 } from '@mui/material';
 import { Delete as DeleteIcon, Save as SaveIcon, Download as DownloadIcon, LocationOn as LocationIcon } from '@mui/icons-material';
 import { format, parse } from 'date-fns';
@@ -42,119 +42,11 @@ import { generatePrayerTimesForMonth, generatePrayerTimesForYear } from '@/lib/p
 import React from 'react';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import PageHeader from '@/components/layouts/page-header';
-
-interface PrayerTime {
-  date: Date;
-  fajr: string;
-  sunrise: string;
-  zuhr: string;
-  asr: string;
-  maghrib: string;
-  isha: string;
-  fajrJamaat: string;
-  zuhrJamaat: string;
-  asrJamaat: string;
-  maghribJamaat: string;
-  ishaJamaat: string;
-  jummahKhutbah?: string;
-  jummahJamaat?: string;
-  isManuallySet?: boolean;
-  source?: string;
-}
-
-const CALCULATION_METHODS = [
-  { value: 'MWL', label: 'Muslim World League' },
-  { value: 'ISNA', label: 'Islamic Society of North America' },
-  { value: 'Egypt', label: 'Egyptian General Authority' },
-  { value: 'Makkah', label: 'Umm Al-Qura University, Makkah' },
-  { value: 'Karachi', label: 'University of Islamic Sciences, Karachi' },
-  { value: 'Tehran', label: 'Institute of Geophysics, Tehran' },
-  { value: 'Singapore', label: 'Singapore' },
-];
-
-const MADHABS = [
-  { value: 'Shafi', label: 'Shafi' },
-  { value: 'Hanafi', label: 'Hanafi' },
-];
-
-interface EditableCellProps {
-  value: string;
-  row: PrayerTime;
-  field: keyof PrayerTime;
-  onSave: (row: PrayerTime, field: keyof PrayerTime, value: string) => void;
-}
-
-function EditableCell({ value, row, field, onSave }: EditableCellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-    setEditValue(value);
-  };
-
-  const handleBlur = () => {
-    if (editValue !== value) {
-      onSave(row, field, editValue);
-    }
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      if (editValue !== value) {
-        onSave(row, field, editValue);
-      }
-      setIsEditing(false);
-    } else if (e.key === 'Escape') {
-      setEditValue(value);
-      setIsEditing(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (isEditing && inputRef.current) {
-      setTimeout(() => {
-        const input = inputRef.current?.querySelector('input');
-        if (input) {
-          input.focus();
-          input.select();
-        }
-      }, 0);
-    }
-  }, [isEditing]);
-
-  if (!isEditing) {
-    return (
-      <TableCell onDoubleClick={handleDoubleClick} sx={{ cursor: 'pointer' }}>
-        {value}
-      </TableCell>
-    );
-  }
-
-  return (
-    <TableCell padding="none">
-      <TextField
-        ref={inputRef}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        variant="standard"
-        size="small"
-        fullWidth
-        autoFocus
-        inputProps={{
-          style: { 
-            padding: '8px',
-            fontSize: 'inherit',
-          }
-        }}
-      />
-    </TableCell>
-  );
-}
+import PrayerTimesTable, { PrayerTime } from '@/components/prayer-times/PrayerTimesTable';
+import EditPrayerTimeDialog from '@/components/prayer-times/EditPrayerTimeDialog';
+import CalculationSettings from '@/components/prayer-times/CalculationSettings';
+import CsvUploader from '@/components/prayer-times/CsvUploader';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 export default function PrayerTimesAdmin() {
   const [activeTab, setActiveTab] = useState<number>(0);
@@ -164,6 +56,17 @@ export default function PrayerTimesAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [masjidAddress, setMasjidAddress] = useState<string>('');
+  const [saving, setSaving] = useState<boolean>(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  
+  // Pagination state
+  const [page, setPage] = useState<number>(0);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  
+  // Month filter state
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [filteredPrayerTimes, setFilteredPrayerTimes] = useState<PrayerTime[]>([]);
   
   // Use the global unsaved changes context
   const { hasUnsavedChanges, setHasUnsavedChanges, confirmNavigation } = useUnsavedChanges();
@@ -191,7 +94,6 @@ export default function PrayerTimesAdmin() {
 
   // Add new state variables for location mode
   const [useManualCoordinates, setUseManualCoordinates] = useState(false);
-  const [masjidAddress, setMasjidAddress] = useState<string | null>(null);
 
   // Load initial data
   React.useEffect(() => {
@@ -236,12 +138,22 @@ export default function PrayerTimesAdmin() {
 
   const fetchPrayerTimes = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/prayer-times');
       if (!response.ok) throw new Error('Failed to fetch prayer times');
       const data = await response.json();
-      setPrayerTimes(data);
+      
+      // Convert date strings to Date objects
+      const formattedData = data.map((item: any) => ({
+        ...item,
+        date: new Date(item.date)
+      }));
+      
+      setPrayerTimes(formattedData);
     } catch (error) {
       setFatalError('Failed to load prayer times');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -311,6 +223,7 @@ export default function PrayerTimesAdmin() {
     if (!file) return;
 
     try {
+      setSaving(true);
       const text = await file.text();
       const rows = text.split(/\r?\n/).filter(row => row.trim()).map(row => row.split(',').map(cell => cell.trim()));
       const headers = rows[0].map(header => header.trim());
@@ -321,6 +234,7 @@ export default function PrayerTimesAdmin() {
       
       if (missingColumns.length > 0) {
         setError(`Missing required columns: ${missingColumns.join(', ')}`);
+        setSaving(false);
         return;
       }
 
@@ -375,10 +289,14 @@ export default function PrayerTimesAdmin() {
       }
 
       await fetchPrayerTimes();
-      setActiveTab(2);
+      setSuccess('Prayer times uploaded and saved successfully');
+      // Clear success message after 6 seconds
+      setTimeout(() => setSuccess(null), 6000);
       setError(null);
     } catch (err) {
       setError(`Error processing CSV file: ${err instanceof Error ? err.message : 'Please ensure it matches the required format.'}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -417,8 +335,8 @@ export default function PrayerTimesAdmin() {
         setError(null);
       }
     } catch (error) {
-      console.error('Error calculating prayer times for the year:', error);
-      setError('Error calculating prayer times for the year. Please check your settings.');
+      console.error('Error calculating prayer times for year:', error);
+      setError('Error calculating prayer times for year. Please check your settings.');
     }
   };
 
@@ -523,11 +441,169 @@ export default function PrayerTimesAdmin() {
     setHasUnsavedChanges(true);
   };
 
+  // Filter prayer times by month
+  const filterPrayerTimesByMonth = useCallback(() => {
+    if (selectedMonth === 'all') {
+      setFilteredPrayerTimes(prayerTimes);
+    } else {
+      const monthNumber = parseInt(selectedMonth);
+      const filtered = prayerTimes.filter(time => {
+        const date = new Date(time.date);
+        return date.getMonth() + 1 === monthNumber;
+      });
+      setFilteredPrayerTimes(filtered);
+    }
+    // Reset to first page when filter changes
+    setPage(0);
+  }, [prayerTimes, selectedMonth]);
+
+  // Update filtered data when prayer times or selected month changes
+  useEffect(() => {
+    filterPrayerTimesByMonth();
+  }, [prayerTimes, selectedMonth, filterPrayerTimesByMonth]);
+
+  // Handle month filter change
+  const handleMonthFilterChange = (event: SelectChangeEvent<string>) => {
+    setSelectedMonth(event.target.value);
+  };
+
+  // Handle page change
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  // Handle rows per page change
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Save calculated prayer times to the database
+  const handleSaveCalculatedTimes = async () => {
+    if (!prayerTimes || prayerTimes.length === 0) {
+      setError('Please calculate prayer times first');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      // Ensure all times have the source set to CALCULATION
+      const timesToSave = prayerTimes.map(time => ({
+        ...time,
+        source: 'CALCULATION',
+        isManuallySet: false
+      }));
+      
+      const response = await fetch('/api/prayer-times', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(timesToSave),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save calculated prayer times');
+      }
+
+      setSuccess('Prayer times saved successfully');
+      // Clear success message after 6 seconds
+      setTimeout(() => setSuccess(null), 6000);
+      
+      // Refresh the prayer times from the database
+      await fetchPrayerTimes();
+      
+      // Switch to the view/edit tab
+      setActiveTab(0);
+    } catch (error) {
+      console.error('Error saving calculated prayer times:', error);
+      setError('Failed to save calculated prayer times. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Export prayer times as CSV
+  const handleExportCSV = () => {
+    if (!filteredPrayerTimes || filteredPrayerTimes.length === 0) {
+      setError('No prayer times to export');
+      return;
+    }
+
+    try {
+      // Define CSV headers
+      const headers = [
+        'Date',
+        'Fajr',
+        'Sunrise',
+        'Zuhr',
+        'Asr',
+        'Maghrib',
+        'Isha',
+        'Fajr Jamaat',
+        'Zuhr Jamaat',
+        'Asr Jamaat',
+        'Maghrib Jamaat',
+        'Isha Jamaat',
+        'Jummah Khutbah',
+        'Jummah Jamaat'
+      ];
+
+      // Format the data
+      const csvData = filteredPrayerTimes.map(time => {
+        const date = new Date(time.date);
+        return [
+          format(date, 'dd/MM/yyyy'),
+          time.fajr,
+          time.sunrise || '',
+          time.zuhr,
+          time.asr,
+          time.maghrib,
+          time.isha,
+          time.fajrJamaat || '',
+          time.zuhrJamaat || '',
+          time.asrJamaat || '',
+          time.maghribJamaat || '',
+          time.ishaJamaat || '',
+          time.jummahKhutbah || '',
+          time.jummahJamaat || ''
+        ];
+      });
+
+      // Create CSV content
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.join(','))
+      ].join('\n');
+
+      // Create a blob and download link
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      
+      // Set filename based on filter
+      const filename = selectedMonth === 'all' 
+        ? `prayer-times-${calculationSettings.year}.csv`
+        : `prayer-times-${calculationSettings.year}-${selectedMonth}.csv`;
+      
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      setError('Failed to export CSV. Please try again.');
+    }
+  };
+
   // Component render
   if (fatalError) {
     return (
       <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <Alert severity="error">{fatalError}</Alert>
+        <CustomAlert severity="error">{fatalError}</CustomAlert>
       </Box>
     );
   }
@@ -552,7 +628,7 @@ export default function PrayerTimesAdmin() {
       }}>
         {/* Subtitle */}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Manage and customize prayer times for your masjid. You can calculate prayer times automatically, upload prayer times via CSV, or manually edit individual entries.
+          Manage and customize prayer times for your masjid. You can calculate prayer times automatically or upload prayer times via CSV.
         </Typography>
         
         {/* Tabs */}
@@ -560,504 +636,149 @@ export default function PrayerTimesAdmin() {
           <Tabs value={activeTab} onChange={handleTabChange}>
             <Tab label="Calculate Times" />
             <Tab label="Upload CSV" />
-            <Tab label="View/Edit Times" />
           </Tabs>
         </Box>
 
         {/* Display non-fatal errors */}
         {error && (
-          <Alert 
+          <CustomAlert 
             severity="warning" 
             sx={{ mb: 3 }}
             onClose={() => setError(null)}
           >
             <Typography variant="body1">{error}</Typography>
-          </Alert>
+          </CustomAlert>
+        )}
+        
+        {/* Display success messages */}
+        {success && (
+          <CustomAlert 
+            severity="success" 
+            sx={{ mb: 3 }}
+            onClose={() => setSuccess(null)}
+          >
+            <Typography variant="body1">{success}</Typography>
+          </CustomAlert>
         )}
 
         {activeTab === 0 && (
-          <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
-            <CardContent sx={{ p: '32px 40px' }}>
-              <Stack spacing={4}>
-                <Typography variant="h5" fontWeight="medium">Calculation Settings</Typography>
-                <Grid container spacing={3} sx={{ px: { xs: 0, sm: 1 } }}>
-                  <Grid item xs={12}>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={useManualCoordinates}
-                          onChange={handleCoordinatesToggle}
-                          color="primary"
-                        />
-                      }
-                      label="Use manual coordinates"
-                    />
-                    
-                    {!useManualCoordinates && masjidAddress && (
-                      <Alert 
-                        severity="info" 
-                        icon={<LocationIcon />}
-                        sx={{ mt: 2, display: 'flex', alignItems: 'center' }}
-                      >
-                        <AlertTitle>Using Masjid Location</AlertTitle>
-                        <Typography variant="body2">
-                          {masjidAddress}
-                        </Typography>
-                      </Alert>
-                    )}
-                    
-                    {!useManualCoordinates && !masjidAddress && (
-                      <Alert 
-                        severity="warning"
-                        sx={{ mt: 2 }}
-                      >
-                        <AlertTitle>No Address Found</AlertTitle>
-                        <Typography variant="body2">
-                          Please update your masjid address in the settings or use manual coordinates.
-                        </Typography>
-                      </Alert>
-                    )}
-                    
-                    {useManualCoordinates && (
-                      <>
-                        <Grid container spacing={2} sx={{ mt: 1 }}>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              label="Latitude"
-                              type="number"
-                              value={calculationSettings.latitude}
-                              onChange={(e) => setCalculationSettings({
-                                ...calculationSettings,
-                                latitude: parseFloat(e.target.value),
-                              })}
-                              fullWidth
-                              variant="outlined"
-                              InputProps={{
-                                startAdornment: (
-                                  <InputAdornment position="start">
-                                    <LocationIcon fontSize="small" />
-                                  </InputAdornment>
-                                ),
-                              }}
-                            />
-                          </Grid>
-                          <Grid item xs={12} sm={6}>
-                            <TextField
-                              label="Longitude"
-                              type="number"
-                              value={calculationSettings.longitude}
-                              onChange={(e) => setCalculationSettings({
-                                ...calculationSettings,
-                                longitude: parseFloat(e.target.value),
-                              })}
-                              fullWidth
-                              variant="outlined"
-                              InputProps={{
-                                startAdornment: (
-                                  <InputAdornment position="start">
-                                    <LocationIcon fontSize="small" />
-                                  </InputAdornment>
-                                ),
-                              }}
-                            />
-                          </Grid>
-                        </Grid>
-                      </>
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                    <FormControl fullWidth variant="outlined">
-                      <InputLabel>Calculation Method</InputLabel>
-                      <Select
-                        value={calculationSettings.calculationMethod}
-                        label="Calculation Method"
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                          calculationMethod: e.target.value,
-                        })}
-                      >
-                        {CALCULATION_METHODS.map((method) => (
-                          <MenuItem key={method.value} value={method.value}>
-                            {method.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                    <FormControl fullWidth variant="outlined">
-                      <InputLabel>Madhab</InputLabel>
-                      <Select
-                        value={calculationSettings.madhab}
-                        label="Madhab"
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                          madhab: e.target.value,
-                        })}
-                      >
-                        {MADHABS.map((madhab) => (
-                          <MenuItem key={madhab.value} value={madhab.value}>
-                            {madhab.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                    <TextField
-                      label="Month"
-                      type="number"
-                      value={calculationSettings.month}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        month: parseInt(e.target.value),
-                      })}
-                      inputProps={{ min: 1, max: 12 }}
-                      fullWidth
-                      variant="outlined"
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6} sx={{ pr: { sm: 2 } }}>
-                    <TextField
-                      label="Year"
-                      type="number"
-                      value={calculationSettings.year}
-                      onChange={(e) => setCalculationSettings({
-                        ...calculationSettings,
-                        year: parseInt(e.target.value),
-                      })}
-                      fullWidth
-                      variant="outlined"
-                    />
-                  </Grid>
-                </Grid>
+          <>
+            <Box sx={{ 
+              width: '100%', 
+              maxWidth: '100%',
+              overflowX: 'hidden'
+            }}>
+              <CalculationSettings
+                calculationSettings={calculationSettings}
+                originalSettings={originalSettings}
+                useManualCoordinates={useManualCoordinates}
+                masjidAddress={masjidAddress}
+                hasUnsavedChanges={hasUnsavedChanges}
+                saving={saving}
+                onCalculationSettingsChange={setCalculationSettings}
+                onCoordinatesToggle={handleCoordinatesToggle}
+                onCalculate={handleCalculate}
+                onCalculateYear={handleCalculateYear}
+                onSaveSettings={handleSaveSettings}
+              />
+            </Box>
 
-                <Divider />
-
-                <Typography variant="h5" fontWeight="medium">Adjustments (minutes)</Typography>
-                <Grid container spacing={3} sx={{ px: { xs: 0, sm: 1 } }}>
-                  {Object.keys(calculationSettings.adjustments).map((prayer) => (
-                    <Grid item xs={12} sm={6} md={4} key={prayer} sx={{ pr: { sm: 2 } }}>
-                      <TextField
-                        label={`${prayer.charAt(0).toUpperCase() + prayer.slice(1)} Adjustment`}
-                        type="number"
-                        value={calculationSettings.adjustments[prayer as keyof typeof calculationSettings.adjustments]}
-                        onChange={(e) => setCalculationSettings({
-                          ...calculationSettings,
-                          adjustments: {
-                            ...calculationSettings.adjustments,
-                            [prayer]: parseInt(e.target.value) || 0,
-                          },
-                        })}
-                        fullWidth
-                        variant="outlined"
-                      />
-                    </Grid>
-                  ))}
-                </Grid>
-
-                <Box sx={{ pt: 2 }}>
-                  <Stack direction="row" spacing={2}>
+            {prayerTimes && prayerTimes.length > 0 && (
+              <>
+                <Divider sx={{ my: 4 }} />
+                
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h5" fontWeight="medium" sx={{ mb: 3 }}>View/Edit Prayer Times</Typography>
+                  
+                  <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
                     <Button 
                       variant="contained" 
-                      onClick={handleCalculate}
+                      onClick={handleSaveCalculatedTimes}
+                      disabled={saving}
+                      startIcon={<SaveIcon />}
                       size="large"
                       sx={{ px: 3, py: 1 }}
                     >
-                      Calculate Month
+                      {saving ? 'Saving...' : 'Save to Database'}
                     </Button>
+                    
                     <Button 
                       variant="outlined" 
-                      onClick={handleCalculateYear}
+                      onClick={handleExportCSV}
+                      disabled={saving}
+                      startIcon={<DownloadIcon />}
                       size="large"
                       sx={{ px: 3, py: 1 }}
                     >
-                      Calculate Year
+                      Export as CSV
                     </Button>
-                    {hasUnsavedChanges && (
-                      <Button 
-                        variant="contained" 
-                        color="secondary"
-                        onClick={handleSaveSettings}
-                        size="large"
-                        sx={{ px: 3, py: 1 }}
-                        startIcon={<SaveIcon />}
-                      >
-                        Save Settings
-                      </Button>
-                    )}
                   </Stack>
+                  
+                  <PrayerTimesTable
+                    prayerTimes={prayerTimes}
+                    filteredPrayerTimes={filteredPrayerTimes}
+                    selectedMonth={selectedMonth}
+                    page={page}
+                    rowsPerPage={rowsPerPage}
+                    onMonthFilterChange={handleMonthFilterChange}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    onInlineSave={handleInlineSave}
+                    onDeleteTime={handleDeleteTime}
+                  />
                 </Box>
-              </Stack>
-            </CardContent>
-          </Card>
+              </>
+            )}
+          </>
         )}
 
         {activeTab === 1 && (
-          <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
-            <CardContent sx={{ p: '32px 40px' }}>
-              <Stack spacing={3}>
-                <Typography variant="h5" fontWeight="medium">Upload Prayer Times</Typography>
-                <Typography variant="body1">
-                  Upload a CSV file with prayer times. The file should include the following columns:
-                  Date (DD/MM/YYYY), Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha, and optional Jamaat times.
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', pt: 1 }}>
-                  <Button
-                    variant="contained"
-                    component="label"
-                    size="large"
-                    sx={{ px: 3, py: 1 }}
-                  >
-                    Upload CSV File
-                    <input
-                      type="file"
-                      hidden
-                      accept=".csv"
-                      onChange={handleCSVUpload}
-                    />
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    component="a"
-                    href="/example-timetable.csv"
-                    download
-                    startIcon={<DownloadIcon />}
-                    size="large"
-                    sx={{ px: 3, py: 1 }}
-                  >
-                    Download Example CSV
-                  </Button>
+          <>
+            <CsvUploader
+              saving={saving}
+              onCsvUpload={handleCSVUpload}
+            />
+
+            {prayerTimes && prayerTimes.length > 0 && (
+              <>
+                <Divider sx={{ my: 4 }} />
+                
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h5" fontWeight="medium" sx={{ mb: 3 }}>View/Edit Prayer Times</Typography>
+                  
+                  <PrayerTimesTable
+                    prayerTimes={prayerTimes}
+                    filteredPrayerTimes={filteredPrayerTimes}
+                    selectedMonth={selectedMonth}
+                    page={page}
+                    rowsPerPage={rowsPerPage}
+                    onMonthFilterChange={handleMonthFilterChange}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    onInlineSave={handleInlineSave}
+                    onDeleteTime={handleDeleteTime}
+                    highlightManuallySet={true}
+                  />
                 </Box>
-                <Alert severity="info" sx={{ mt: 1 }}>
-                  <AlertTitle>CSV Format Guidelines</AlertTitle>
-                  <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
-                    <li>Date must be in DD/MM/YYYY format</li>
-                    <li>Times must be in 24-hour format (HH:mm)</li>
-                    <li>Required columns: Date, Fajr, Sunrise, Zuhr, Asr, Maghrib, Isha</li>
-                    <li>Optional columns: Fajr Jamaat, Zuhr Jamaat, Asr Jamaat, Maghrib Jamaat, Isha Jamaat</li>
-                    <li>For Fridays, you can include Jummah Khutbah and Jummah Jamaat times</li>
-                  </ul>
-                </Alert>
-                {error && (
-                  <Alert severity="error" onClose={() => setError(null)}>
-                    {error}
-                  </Alert>
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
+              </>
+            )}
+          </>
         )}
 
-        {activeTab === 2 && (
-          <Card sx={{ mb: 3, mx: 'auto', width: '100%', maxWidth: '1200px' }}>
-            <CardContent sx={{ p: 0 }}>
-              <Box sx={{ p: '32px 40px', pb: 2 }}>
-                <Typography variant="h5" fontWeight="medium" sx={{ mb: 3 }}>Prayer Times Table</Typography>
-              </Box>
-              <Box>
-                <TableContainer component={Paper} sx={{ 
-                  borderRadius: 0,
-                  boxShadow: 'none',
-                  '& .MuiTable-root': {
-                    borderCollapse: 'separate',
-                    borderSpacing: 0,
-                  },
-                  '& .MuiTableCell-root': {
-                    borderBottom: '1px solid rgba(224, 224, 224, 1)',
-                    padding: '12px 16px',
-                    '&:first-of-type': {
-                      pl: '40px'
-                    },
-                    '&:last-of-type': {
-                      pr: '40px'
-                    }
-                  },
-                  '& .MuiTableHead-root .MuiTableCell-root': {
-                    background: (theme) => theme.palette.grey[50],
-                    fontWeight: 600
-                  }
-                }}>
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Source</TableCell>
-                        <TableCell>Fajr</TableCell>
-                        <TableCell>Fajr Jamaat</TableCell>
-                        <TableCell>Sunrise</TableCell>
-                        <TableCell>Zuhr</TableCell>
-                        <TableCell>Zuhr Jamaat</TableCell>
-                        <TableCell>Asr</TableCell>
-                        <TableCell>Asr Jamaat</TableCell>
-                        <TableCell>Maghrib</TableCell>
-                        <TableCell>Maghrib Jamaat</TableCell>
-                        <TableCell>Isha</TableCell>
-                        <TableCell>Isha Jamaat</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {prayerTimes.map((time) => (
-                        <TableRow 
-                          key={time.date.toString()}
-                          sx={{
-                            backgroundColor: time.isManuallySet ? 'rgba(255, 255, 0, 0.1)' : 'inherit',
-                          }}
-                        >
-                          <TableCell>{format(time.date, 'dd/MM/yyyy')}</TableCell>
-                          <TableCell>{time.source || 'N/A'}</TableCell>
-                          <EditableCell value={time.fajr} row={time} field="fajr" onSave={handleInlineSave} />
-                          <EditableCell value={time.fajrJamaat} row={time} field="fajrJamaat" onSave={handleInlineSave} />
-                          <EditableCell value={time.sunrise} row={time} field="sunrise" onSave={handleInlineSave} />
-                          <EditableCell value={time.zuhr} row={time} field="zuhr" onSave={handleInlineSave} />
-                          <EditableCell value={time.zuhrJamaat} row={time} field="zuhrJamaat" onSave={handleInlineSave} />
-                          <EditableCell value={time.asr} row={time} field="asr" onSave={handleInlineSave} />
-                          <EditableCell value={time.asrJamaat} row={time} field="asrJamaat" onSave={handleInlineSave} />
-                          <EditableCell value={time.maghrib} row={time} field="maghrib" onSave={handleInlineSave} />
-                          <EditableCell value={time.maghribJamaat} row={time} field="maghribJamaat" onSave={handleInlineSave} />
-                          <EditableCell value={time.isha} row={time} field="isha" onSave={handleInlineSave} />
-                          <EditableCell value={time.ishaJamaat} row={time} field="ishaJamaat" onSave={handleInlineSave} />
-                          <TableCell>
-                            <IconButton size="small" onClick={() => handleDeleteTime(time)}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        )}
-
-        <Dialog 
-          open={isEditDialogOpen} 
+        <EditPrayerTimeDialog
+          open={isEditDialogOpen}
           onClose={() => setIsEditDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              m: 2,
-              width: 'calc(100% - 32px)',
-              maxWidth: { xs: 'calc(100% - 32px)', sm: '600px' }
+          selectedTime={selectedTime}
+          onSave={handleSaveEdit}
+          onTimeChange={(field, value) => {
+            if (selectedTime) {
+              setSelectedTime({
+                ...selectedTime,
+                [field]: value
+              });
             }
           }}
-        >
-          <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
-            Edit Prayer Times
-          </DialogTitle>
-          <DialogContent sx={{ pt: 2, pb: 2, px: '32px' }}>
-            <Stack spacing={3}>
-              {selectedTime && (
-                <>
-                  <TextField
-                    label="Date"
-                    value={format(selectedTime.date, 'dd/MM/yyyy')}
-                    disabled
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Fajr"
-                    value={selectedTime.fajr}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, fajr: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Fajr Jamaat"
-                    value={selectedTime.fajrJamaat}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, fajrJamaat: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Sunrise"
-                    value={selectedTime.sunrise}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, sunrise: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Zuhr"
-                    value={selectedTime.zuhr}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, zuhr: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Zuhr Jamaat"
-                    value={selectedTime.zuhrJamaat}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, zuhrJamaat: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Asr"
-                    value={selectedTime.asr}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, asr: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Asr Jamaat"
-                    value={selectedTime.asrJamaat}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, asrJamaat: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Maghrib"
-                    value={selectedTime.maghrib}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, maghrib: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Maghrib Jamaat"
-                    value={selectedTime.maghribJamaat}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, maghribJamaat: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Isha"
-                    value={selectedTime.isha}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, isha: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                  <TextField
-                    label="Isha Jamaat"
-                    value={selectedTime.ishaJamaat}
-                    onChange={(e) => setSelectedTime({ ...selectedTime, ishaJamaat: e.target.value })}
-                    variant="outlined"
-                    fullWidth
-                  />
-                </>
-              )}
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ px: '32px', pb: '24px', pt: 2 }}>
-            <Button 
-              onClick={() => setIsEditDialogOpen(false)} 
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveEdit} 
-              variant="contained" 
-              size="large"
-              sx={{ px: 3, py: 1 }}
-            >
-              Save
-            </Button>
-          </DialogActions>
-        </Dialog>
+        />
       </Box>
     </>
   );

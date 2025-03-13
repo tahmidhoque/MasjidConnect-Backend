@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 export interface RealtimeConfig {
   refreshInterval?: number; // in milliseconds
@@ -18,11 +18,32 @@ export function useRealtimeData<T>(
     enabled = true,
   } = config;
 
+  // Create a fetchData function that can be called manually
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const result = await fetchFn();
+      setData(result);
+      setError(null);
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('An error occurred'));
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchFn]);
+
+  // Expose mutate function to manually trigger a refresh
+  const mutate = useCallback(async () => {
+    return fetchData();
+  }, [fetchData]);
+
   useEffect(() => {
     let mounted = true;
     let timeoutId: NodeJS.Timeout;
 
-    const fetchData = async () => {
+    const fetchDataEffect = async () => {
       try {
         const result = await fetchFn();
         if (mounted) {
@@ -41,8 +62,8 @@ export function useRealtimeData<T>(
     };
 
     const startPolling = () => {
-      fetchData();
-      timeoutId = setInterval(fetchData, refreshInterval);
+      fetchDataEffect();
+      timeoutId = setInterval(fetchDataEffect, refreshInterval);
     };
 
     if (enabled) {
@@ -57,5 +78,5 @@ export function useRealtimeData<T>(
     };
   }, [fetchFn, refreshInterval, enabled]);
 
-  return { data, error, isLoading };
+  return { data, error, isLoading, mutate };
 } 

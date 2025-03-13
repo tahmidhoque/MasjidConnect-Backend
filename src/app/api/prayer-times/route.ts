@@ -34,8 +34,13 @@ export async function POST(req: Request) {
 
     const data = await req.json();
     
-    // If it's a bulk upload (CSV), handle multiple records
+    // If it's a bulk upload (CSV or calculated times), handle multiple records
     if (Array.isArray(data)) {
+      // Determine the source (default to 'CSV' for backward compatibility)
+      const source = data[0]?.source || 'CSV';
+      // Set isManuallySet based on source - only CSV uploads are considered manually set
+      const isManuallySet = source === 'CSV';
+      
       // Delete existing records for the dates being uploaded to avoid duplicates
       const dates = data.map(item => new Date(item.date));
       await prisma.prayerTime.deleteMany({
@@ -65,14 +70,15 @@ export async function POST(req: Request) {
           ishaJamaat: item.ishaJamaat,
           jummahKhutbah: item.jummahKhutbah,
           jummahJamaat: item.jummahJamaat,
-          isManuallySet: true,
-          source: 'CSV',
+          isManuallySet: isManuallySet,
+          source: source,
         })),
       });
       return NextResponse.json(prayerTimes);
     }
     
     // Single record insert/update
+    const isManuallySet = data.source !== 'CALCULATION';
     const prayerTime = await prisma.prayerTime.upsert({
       where: {
         date_masjidId: {
@@ -84,15 +90,16 @@ export async function POST(req: Request) {
         ...data,
         date: new Date(data.date),
         masjidId: session.user.masjidId,
-        isManuallySet: true,
+        isManuallySet: isManuallySet,
       },
       create: {
         ...data,
         date: new Date(data.date),
         masjidId: session.user.masjidId,
-        isManuallySet: true,
+        isManuallySet: isManuallySet,
       },
     });
+
     return NextResponse.json(prayerTime);
   } catch (error) {
     console.error('Error saving prayer times:', error);
@@ -108,16 +115,18 @@ export async function DELETE(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get('date');
+    const dateParam = searchParams.get('date');
     
-    if (!date) {
-      return NextResponse.json({ error: 'Date is required' }, { status: 400 });
+    if (!dateParam) {
+      return NextResponse.json({ error: 'Date parameter is required' }, { status: 400 });
     }
 
+    const date = new Date(dateParam);
+    
     await prisma.prayerTime.delete({
       where: {
         date_masjidId: {
-          date: new Date(date),
+          date,
           masjidId: session.user.masjidId,
         },
       },

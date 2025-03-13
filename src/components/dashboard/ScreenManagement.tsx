@@ -1,146 +1,163 @@
-import { DashboardScreen } from '@/types/dashboard';
-import { Paper, Box, Typography, Divider, Chip, Grid, Avatar } from '@mui/material';
-import { formatDistanceToNow } from 'date-fns';
-import { Monitor as MonitorIcon, WifiOff as WifiOffIcon, CheckCircle, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { Box, Typography, Paper, Button, Chip, Avatar } from '@mui/material';
+import MonitorIcon from '@mui/icons-material/Monitor';
+import AddIcon from '@mui/icons-material/Add';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import { ScreenStatus } from '@prisma/client';
 
-interface ScreenManagementProps {
-  screens: DashboardScreen[];
+interface Screen {
+  id: string;
+  name: string;
+  status: ScreenStatus;
+  lastSeen?: Date | null;
 }
 
-export function ScreenManagement({ screens }: ScreenManagementProps) {
-  const getStatusColor = (status: string) => {
+interface ScreenManagementProps {
+  screens: Screen[];
+  onAddScreen: () => void;
+}
+
+const ScreenManagement: React.FC<ScreenManagementProps> = ({ 
+  screens = [], 
+  onAddScreen = () => console.log('Add screen clicked') 
+}) => {
+  const getStatusColor = (status: ScreenStatus) => {
     switch (status) {
-      case 'ONLINE':
-        return '#4caf50';
-      case 'OFFLINE':
-        return '#f44336';
-      case 'PAIRING':
-        return '#ff9800';
-      default:
-        return '#9e9e9e';
+      case 'ONLINE': return 'success.main';
+      case 'OFFLINE': return 'error.main';
+      case 'PAIRING': return 'warning.main';
+      default: return 'text.secondary';
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: ScreenStatus) => {
     switch (status) {
-      case 'ONLINE':
-        return 'Online';
-      case 'OFFLINE':
-        return 'Offline';
-      case 'PAIRING':
-        return 'Pairing';
-      default:
-        return status;
+      case 'ONLINE': return 'Online';
+      case 'OFFLINE': return 'Offline';
+      case 'PAIRING': return 'Pairing';
+      default: return 'Unknown';
     }
   };
 
-  const getLastSeenText = (lastSeen: Date | null) => {
+  const getLastSeenText = (lastSeen?: Date | null) => {
     if (!lastSeen) return 'Never';
-    return formatDistanceToNow(new Date(lastSeen), { addSuffix: true });
+    
+    // Simple formatting for demo purposes
+    return lastSeen.toLocaleString();
   };
 
   return (
     <Paper 
       elevation={0} 
       sx={{ 
-        p: 0, 
-        borderRadius: 2,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        border: '1px solid',
-        borderColor: 'rgba(0,0,0,0.05)',
+        p: 3, 
+        borderRadius: '8px',
+        border: '1px solid rgba(0, 0, 0, 0.08)'
       }}
     >
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3 
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <MonitorIcon size={20} />
-          <Typography variant="h6" sx={{ ml: 1, fontWeight: 600 }}>
+          <MonitorIcon sx={{ mr: 1, color: 'text.secondary' }} />
+          <Typography variant="h6" component="h2">
             Screen Management
           </Typography>
         </Box>
+        
         <Chip 
-          label={`${screens.length} Screen${screens.length !== 1 ? 's' : ''}`} 
-          variant="outlined"
-          size="small"
+          label={`${screens.length} Screens`} 
+          size="small" 
+          color={screens.length > 0 ? "primary" : "default"}
         />
       </Box>
 
-      <Divider />
-
-      <Box sx={{ p: 2 }}>
-        <Grid container spacing={2}>
+      {screens.length > 0 ? (
+        <Box>
           {screens.map((screen) => (
-            <Grid item xs={12} key={screen.id}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  border: '1px solid',
-                  borderColor: 'rgba(0,0,0,0.05)',
-                  '&:hover': {
-                    bgcolor: 'rgba(0,0,0,0.01)',
-                  }
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Avatar 
-                    sx={{ 
-                      width: 38, 
-                      height: 38, 
-                      bgcolor: `${getStatusColor(screen.status)}20`,
-                      color: getStatusColor(screen.status)
-                    }}
-                  >
-                    {screen.status === 'ONLINE' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-                  </Avatar>
-                  <Box sx={{ ml: 2 }}>
-                    <Typography variant="body1" fontWeight={500}>
-                      {screen.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {screen.location || 'No location set'}
-                    </Typography>
-                  </Box>
+            <Paper
+              key={screen.id}
+              elevation={0}
+              sx={{
+                p: 2,
+                mb: 2,
+                borderRadius: 1,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: '1px solid',
+                borderColor: 'rgba(0,0,0,0.05)',
+                '&:hover': {
+                  bgcolor: 'rgba(0,0,0,0.01)',
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Avatar 
+                  sx={{ 
+                    width: 38, 
+                    height: 38, 
+                    bgcolor: `${getStatusColor(screen.status)}20`,
+                    color: getStatusColor(screen.status)
+                  }}
+                >
+                  {screen.status === 'ONLINE' ? <CheckCircleIcon fontSize="small" /> : <ErrorIcon fontSize="small" />}
+                </Avatar>
+                <Box sx={{ ml: 2 }}>
+                  <Typography variant="body1" fontWeight={500}>
+                    {screen.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Last seen: {getLastSeenText(screen.lastSeen)}
+                  </Typography>
                 </Box>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box sx={{ textAlign: 'right', mr: 2 }}>
-                    <Chip
-                      label={getStatusLabel(screen.status)}
-                      size="small"
-                      sx={{
-                        bgcolor: `${getStatusColor(screen.status)}20`,
-                        color: getStatusColor(screen.status),
-                        fontWeight: 500,
-                        mb: 0.5
-                      }}
-                    />
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      Last seen: {getLastSeenText(screen.lastSeen)}
-                    </Typography>
-                  </Box>
-                  {screen.status === 'OFFLINE' && (
-                    <WifiOffIcon size={18} color="#f44336" />
-                  )}
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
-
-          {screens.length === 0 && (
-            <Grid item xs={12}>
-              <Box sx={{ py: 4, textAlign: 'center' }}>
-                <Typography color="text.secondary">
-                  No screens found. Add a screen to get started.
-                </Typography>
               </Box>
-            </Grid>
-          )}
-        </Grid>
-      </Box>
+              
+              <Chip
+                label={getStatusLabel(screen.status)}
+                size="small"
+                sx={{
+                  bgcolor: `${getStatusColor(screen.status)}20`,
+                  color: getStatusColor(screen.status),
+                  fontWeight: 500
+                }}
+              />
+            </Paper>
+          ))}
+        </Box>
+      ) : (
+        <Box 
+          sx={{ 
+            textAlign: 'center', 
+            py: 4,
+            color: 'text.secondary',
+            backgroundColor: 'rgba(0, 0, 0, 0.02)',
+            borderRadius: '4px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2
+          }}
+        >
+          <Typography variant="body1">
+            No screens found. Add a screen to get started.
+          </Typography>
+          
+          <Button 
+            variant="outlined" 
+            startIcon={<AddIcon />}
+            onClick={onAddScreen}
+          >
+            Add a screen
+          </Button>
+        </Box>
+      )}
     </Paper>
   );
-} 
+};
+
+export default ScreenManagement; 

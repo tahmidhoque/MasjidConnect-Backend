@@ -1,68 +1,124 @@
-import { Box, Grid, Paper, Typography, LinearProgress } from '@mui/material';
-
-interface Metric {
-  label: string;
-  value: number;
-  total?: number;
-  color: string;
-}
+import React from 'react';
+import { Box, Grid, Paper, Typography } from '@mui/material';
+import MonitorIcon from '@mui/icons-material/Monitor';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { useRouter } from 'next/navigation';
 
 interface DashboardMetricsProps {
-  metrics: Metric[];
+  onlineScreens: number;
+  activeSchedules: number;
+  systemAlerts: number;
 }
 
-export default function DashboardMetrics({ metrics }: DashboardMetricsProps) {
+const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
+  onlineScreens = 0,
+  activeSchedules = 0,
+  systemAlerts = 0
+}) => {
+  const router = useRouter();
+
   return (
-    <Grid container spacing={3} sx={{ mb: 3 }}>
-      {metrics.map((metric, index) => (
-        <Grid item xs={12} sm={4} key={index}>
-          <Paper 
-            elevation={0} 
-            sx={{
-              p: 2.5,
-              borderRadius: 2,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              height: '100%',
-              border: '1px solid',
-              borderColor: 'rgba(0,0,0,0.05)',
-              transition: 'transform 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              }
-            }}
-          >
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              {metric.label}
+    <Grid container spacing={3}>
+      <Grid item xs={12} sm={4}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: '8px',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            height: '100%',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              transform: 'translateY(-2px)'
+            }
+          }}
+          onClick={() => router.push('/screens')}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+              Online Screens
             </Typography>
-            <Typography variant="h4" fontWeight="bold" sx={{ mb: 1, color: metric.color }}>
-              {metric.value}
-              {metric.total !== undefined && (
-                <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                  {metric.total > 0 ? `of ${metric.total}` : ''}
-                </Typography>
-              )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MonitorIcon sx={{ color: 'success.main', fontSize: 28 }} />
+              <Typography variant="h3" component="div" color="success.main" fontWeight="bold">
+                {onlineScreens}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Grid>
+      
+      <Grid item xs={12} sm={4}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: '8px',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            height: '100%',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              transform: 'translateY(-2px)'
+            }
+          }}
+          onClick={() => router.push('/content')}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+              Active Schedules
             </Typography>
-            
-            {metric.total !== undefined && metric.total > 0 && (
-              <Box sx={{ width: '100%' }}>
-                <LinearProgress
-                  variant="determinate"
-                  value={metric.total > 0 ? (metric.value / metric.total) * 100 : 0}
-                  sx={{
-                    height: 6,
-                    borderRadius: 1,
-                    bgcolor: 'rgba(0,0,0,0.05)',
-                    '& .MuiLinearProgress-bar': {
-                      bgcolor: metric.color,
-                    }
-                  }}
-                />
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-      ))}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CalendarMonthIcon sx={{ color: 'primary.main', fontSize: 28 }} />
+              <Typography variant="h3" component="div" color="primary.main" fontWeight="bold">
+                {activeSchedules}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Grid>
+      
+      <Grid item xs={12} sm={4}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: '8px',
+            border: '1px solid rgba(0, 0, 0, 0.08)',
+            height: '100%',
+            cursor: systemAlerts > 0 ? 'pointer' : 'default',
+            transition: 'all 0.2s ease',
+            '&:hover': systemAlerts > 0 ? {
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+              transform: 'translateY(-2px)'
+            } : {}
+          }}
+          onClick={() => systemAlerts > 0 && window.scrollTo({ top: document.getElementById('system-alerts')?.offsetTop || 0, behavior: 'smooth' })}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+              System Alerts
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WarningAmberIcon sx={{ color: systemAlerts > 0 ? 'error.main' : 'text.secondary', fontSize: 28 }} />
+              <Typography 
+                variant="h3" 
+                component="div" 
+                color={systemAlerts > 0 ? 'error.main' : 'text.secondary'} 
+                fontWeight="bold"
+              >
+                {systemAlerts}
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Grid>
     </Grid>
   );
-} 
+};
+
+export default DashboardMetrics; 
