@@ -54,60 +54,92 @@ function LoginForm() {
       setError(null)
       setIsLoading(true)
 
+      // Step 1: Sign in
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
       });
       
-      if (result?.error) {
-        setError(result.error || 'Failed to sign in');
-        setIsLoading(false);
-        return;
+      if (!result?.ok || result?.error) {
+        throw new Error(result?.error || 'Failed to sign in');
       }
-      
-      // Fetch user data
+
+      // Step 2: Get session data with retry
+      let sessionData;
       try {
-        // Get user and masjid data from API
-        const userResponse = await fetch('/api/auth/session');
-        if (!userResponse.ok) {
-          throw new Error('Failed to fetch user session');
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+          const userResponse = await fetch('/api/auth/session');
+          if (userResponse.ok) {
+            sessionData = await userResponse.json();
+            if (sessionData?.user?.id && sessionData?.user?.masjidId) {
+              break;
+            }
+          }
+          // Wait before retrying
+          if (i < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
         
-        const sessionData = await userResponse.json();
         if (!sessionData?.user?.id || !sessionData?.user?.masjidId) {
-          throw new Error('Invalid session data');
+          throw new Error('Invalid session data after retries');
+        }
+      } catch (error) {
+        console.error('Session fetch error:', error);
+        throw new Error('Failed to fetch user session');
+      }
+
+      // Step 3: Update context and local storage
+      try {
+        // Set user name first
+        const userName = sessionData.user.name || 'User';
+        setUserName(userName);
+
+        // Prefetch user data
+        await prefetchUserData(
+          sessionData.user.id,
+          sessionData.user.masjidId,
+          userName
+        );
+
+        // Fetch masjid data with retry
+        let masjidData;
+        const maxRetries = 3;
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const masjidResponse = await fetch(`/api/masjid/${sessionData.user.masjidId}`);
+            if (masjidResponse.ok) {
+              masjidData = await masjidResponse.json();
+              break;
+            }
+          } catch (e) {
+            if (i === maxRetries - 1) throw e;
+          }
+          // Wait before retrying
+          if (i < maxRetries - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         }
 
-        // Prefetch and store user data
-        await prefetchUserData(
-          sessionData.user.id, 
-          sessionData.user.masjidId,
-          sessionData.user.name || 'User'
-        );
-        
-        // Update UserContext immediately
-        setUserName(sessionData.user.name || 'User');
-        
-        // Fetch and set masjid name
-        const masjidResponse = await fetch(`/api/masjid/${sessionData.user.masjidId}`);
-        if (!masjidResponse.ok) {
-          throw new Error('Failed to fetch masjid data');
+        if (!masjidData) {
+          throw new Error('Failed to fetch masjid data after retries');
         }
-        
-        const masjidData = await masjidResponse.json();
+
+        // Update masjid name in context
         setMasjidName(masjidData.name);
-        
-        // Only redirect after all data is loaded
-        router.push('/dashboard');
+
+        // Step 4: Navigate only after all data is loaded and context is updated
+        // Use replace instead of push to prevent back button issues
+        router.replace('/dashboard');
       } catch (error) {
-        console.error('Error prefetching user data:', error);
-        setError('Failed to load user data. Please try again.');
-        setIsLoading(false);
+        console.error('Data fetching error:', error);
+        throw new Error('Failed to load user data');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Login flow error:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
       setIsLoading(false);
     }
   }
