@@ -235,14 +235,15 @@ export default function DashboardLayout({
           <Collapse in={userMenuOpen && isInitialized} timeout="auto" unmountOnExit>
             <List sx={{ pt: 0, pb: 1 }}>
               {userMenuItems.map((item) => (
-                <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+                <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.25 }}>
                   <ListItemButton
                     component="a"
                     href={item.path}
                     selected={pathname === item.path}
                     sx={{
-                      borderRadius: 2,
-                      py: 0.75,
+                      borderRadius: 1.5,
+                      py: 0.5,
+                      minHeight: '36px',
                       '&.Mui-selected': {
                         bgcolor: 'rgba(255, 255, 255, 0.1)',
                         '&:hover': {
@@ -251,41 +252,46 @@ export default function DashboardLayout({
                       },
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 40 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
                       {item.icon}
                     </ListItemIcon>
                     <ListItemText 
                       primary={item.title}
                       sx={{
+                        my: 0,
                         '& .MuiListItemText-primary': {
-                          fontSize: '0.9rem',
+                          fontSize: '0.85rem',
                           fontWeight: 500,
+                          lineHeight: 1.2,
                         },
                       }}
                     />
                   </ListItemButton>
                 </ListItem>
               ))}
-              <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.5 }}>
+              <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.25 }}>
                 <ListItemButton
                   onClick={handleLogout}
                   sx={{
-                    borderRadius: 2,
-                    py: 0.75,
+                    borderRadius: 1.5,
+                    py: 0.5,
+                    minHeight: '36px',
                     '&:hover': {
                       bgcolor: 'rgba(255, 255, 255, 0.15)',
                     },
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
+                  <ListItemIcon sx={{ minWidth: 36 }}>
                     <LogoutIcon />
                   </ListItemIcon>
                   <ListItemText 
                     primary="Sign Out"
                     sx={{
+                      my: 0,
                       '& .MuiListItemText-primary': {
-                        fontSize: '0.9rem',
+                        fontSize: '0.85rem',
                         fontWeight: 500,
+                        lineHeight: 1.2,
                       },
                     }}
                   />

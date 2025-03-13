@@ -8,9 +8,9 @@ import { ScreenManagement } from '@/components/dashboard/ScreenManagement';
 import { ContentSchedules } from '@/components/dashboard/ContentSchedules';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { DashboardAlerts } from '@/components/dashboard/DashboardAlerts';
+import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import { DashboardData } from '@/types/dashboard';
 import { useRealtimeData } from '@/lib/hooks/useRealtimeData';
-import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 
 async function fetchDashboardData(): Promise<DashboardData> {
   const response = await fetch('/api/dashboard', {
@@ -63,7 +63,8 @@ export default function DashboardPage() {
   const totalScreens = data.screens.length;
   const onlineScreensCount = data.screens.filter(s => s.status === 'ONLINE').length;
   const schedulesCount = data.contentSchedules.length;
-  const alertsCount = data.alerts.missingPrayerTimes.length + data.alerts.offlineScreens.length;
+  const missingPrayerTimesAlert = data.alerts.missingPrayerTimes.length > 0 ? 1 : 0;
+  const alertsCount = missingPrayerTimesAlert + data.alerts.offlineScreens.length;
 
   return (
     <Box sx={{ py: 3 }}>
@@ -99,24 +100,22 @@ export default function DashboardPage() {
       />
       
       <Grid container spacing={3}>
-        {/* System Alerts - Show at top if there are alerts */}
-        {alertsCount > 0 && (
-          <Grid item xs={12}>
-            <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
-              <DashboardAlerts alerts={data.alerts} />
-            </Suspense>
-          </Grid>
-        )}
-        
-        {/* Quick Actions - Left side */}
-        <Grid item xs={12} md={4}>
-          <Suspense fallback={<Box sx={{ height: 300, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+        {/* System Alerts - Always show at the top */}
+        <Grid item xs={12}>
+          <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
+            <DashboardAlerts alerts={data.alerts} />
+          </Suspense>
+        </Grid>
+
+        {/* Quick Actions - Full width */}
+        <Grid item xs={12}>
+          <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
             <QuickActions />
           </Suspense>
         </Grid>
         
-        {/* Screen Management - Right side */}
-        <Grid item xs={12} md={8}>
+        {/* Screen Management - Full width */}
+        <Grid item xs={12}>
           <Suspense fallback={<Box sx={{ height: 300, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
             <ScreenManagement screens={data.screens} />
           </Suspense>
@@ -128,15 +127,6 @@ export default function DashboardPage() {
             <ContentSchedules schedules={data.contentSchedules} />
           </Suspense>
         </Grid>
-        
-        {/* System Alerts - Show at bottom if no alerts */}
-        {alertsCount === 0 && (
-          <Grid item xs={12}>
-            <Suspense fallback={<Box sx={{ height: 100, bgcolor: 'background.paper', borderRadius: 2, p: 2 }} />}>
-              <DashboardAlerts alerts={data.alerts} />
-            </Suspense>
-          </Grid>
-        )}
       </Grid>
     </Box>
   );
