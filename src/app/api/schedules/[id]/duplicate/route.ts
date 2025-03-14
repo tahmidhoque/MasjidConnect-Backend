@@ -7,12 +7,15 @@ import { ContentScheduleService } from '@/lib/services/content-schedule-service'
  * POST /api/schedules/:id/duplicate
  * Duplicate a schedule
  */
-export async function POST(request, { params }) {
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract scheduleId safely from the params
-    const scheduleId = params?.id;
+    // Extract the dynamic parameter
+    const { id } = await params;
     
-    if (!scheduleId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Schedule ID is required' }, 
         { status: 400 }
@@ -47,7 +50,7 @@ export async function POST(request, { params }) {
       // Duplicate the schedule
       const newSchedule = await ContentScheduleService.duplicateSchedule(
         masjidId,
-        scheduleId,
+        id,
         name
       );
       

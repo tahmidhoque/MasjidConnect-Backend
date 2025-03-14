@@ -7,12 +7,15 @@ import { ContentScheduleService } from '@/lib/services/content-schedule-service'
  * GET /api/schedules/:id
  * Get a specific content schedule by ID
  */
-export async function GET(request, { params }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract scheduleId safely from the params
-    const scheduleId = params?.id;
+    // Extract the dynamic parameter
+    const { id } = await params;
     
-    if (!scheduleId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Schedule ID is required' }, 
         { status: 400 }
@@ -37,7 +40,7 @@ export async function GET(request, { params }) {
       const schedules = await ContentScheduleService.getSchedules(masjidId);
       
       // Find the requested schedule
-      const schedule = schedules.find(s => s.id === scheduleId);
+      const schedule = schedules.find(s => s.id === id);
       
       if (!schedule) {
         return NextResponse.json(
@@ -65,12 +68,15 @@ export async function GET(request, { params }) {
  * PATCH /api/schedules/:id
  * Update a content schedule
  */
-export async function PATCH(request, { params }) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract scheduleId safely from the params
-    const scheduleId = params?.id;
+    // Extract the dynamic parameter
+    const { id } = await params;
     
-    if (!scheduleId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Schedule ID is required' }, 
         { status: 400 }
@@ -97,7 +103,7 @@ export async function PATCH(request, { params }) {
       // Update the schedule
       const updatedSchedule = await ContentScheduleService.updateSchedule(
         masjidId,
-        scheduleId,
+        id,
         data
       );
       
@@ -128,12 +134,15 @@ export async function PATCH(request, { params }) {
  * DELETE /api/schedules/:id
  * Delete a content schedule
  */
-export async function DELETE(request, { params }) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Extract scheduleId safely from the params
-    const scheduleId = params?.id;
+    // Extract the dynamic parameter
+    const { id } = await params;
     
-    if (!scheduleId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Schedule ID is required' }, 
         { status: 400 }
@@ -155,7 +164,7 @@ export async function DELETE(request, { params }) {
     
     try {
       // Delete the schedule
-      await ContentScheduleService.deleteSchedule(masjidId, scheduleId);
+      await ContentScheduleService.deleteSchedule(masjidId, id);
       
       return new NextResponse(null, { status: 204 });
     } catch (serviceError) {

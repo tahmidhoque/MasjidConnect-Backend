@@ -8,10 +8,13 @@ import { ContentScheduleService } from '@/lib/services/content-schedule-service'
  * Set a schedule as the default
  */
 export async function POST(
-  request,
-  { params }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Extract the dynamic parameter
+    const { id } = await params;
+    
     // Get the current session to determine the user and masjid
     const session = await getServerSession(authOptions);
     
@@ -30,17 +33,14 @@ export async function POST(
         { status: 404 }
       );
     }
-
-    // Extract scheduleId from params
-    const scheduleId = params.id;
     
     try {
-      console.log('Setting schedule as default:', scheduleId, 'for masjid:', masjidId);
+      console.log('Setting schedule as default:', id, 'for masjid:', masjidId);
       
       // Set the schedule as default
       const updatedSchedule = await ContentScheduleService.setDefault(
         masjidId,
-        scheduleId
+        id
       );
       
       return NextResponse.json(updatedSchedule);
