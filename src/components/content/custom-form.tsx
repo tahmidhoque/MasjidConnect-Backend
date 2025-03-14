@@ -100,7 +100,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
     <Box
       sx={{
         height: 14,
-        width: 0.5,
+        width: 0,
         bgcolor: 'divider',
         mx: 0.3,
         opacity: 0.5,
