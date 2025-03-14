@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -9,81 +9,129 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   IconButton,
-  Card,
-  CardContent,
-  CardActions,
   Grid,
   Tooltip,
   CircularProgress,
-  FormControlLabel,
-  Switch,
+  Divider,
+  Alert,
+  InputAdornment,
+  Chip,
+  Container,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Close as CloseIcon,
   LocationOn as LocationIcon,
-  AccessTime as TimeIcon,
+  Event as EventIcon,
+  Description as DescriptionIcon,
 } from '@mui/icons-material';
+import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
+import { formatDate } from '@/lib/content-helper';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/components/common/FormFields';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+
+// Custom status chip component
+interface StatusChipProps {
+  label: string;
+  color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
+}
+
+const StatusChip: React.FC<StatusChipProps> = ({ label, color }) => {
+  return (
+    <Chip
+      label={label}
+      color={color}
+      size="small"
+      sx={{ minWidth: '80px' }}
+    />
+  );
+};
 
 interface EventItem {
   id: string;
   title: string;
   description: string;
   location: string;
-  date: string;
-  time: string;
+  eventDate: string;
   isHighlighted: boolean;
+  duration: number;
+  isActive: boolean;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export default function EventPage() {
   const [items, setItems] = useState<EventItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     location: '',
-    date: '',
-    time: '',
+    eventDate: null as dayjs.Dayjs | null,
     isHighlighted: false,
+    duration: 15,
+    isActive: true,
+    startDate: null as dayjs.Dayjs | null,
+    endDate: null as dayjs.Dayjs | null,
   });
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { showSnackbar } = useSnackbar();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
-
-  const fetchItems = async () => {
+  // Fetch items function
+  const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/content/event');
-      if (!response.ok) throw new Error('Failed to fetch items');
+      const response = await fetch(`/api/content/event?page=${page}&pageSize=${pageSize}`);
+      if (!response.ok) throw new Error('Failed to fetch events');
       const data = await response.json();
-      setItems(data);
+      setItems(data.items || data);
+      if (data.meta) {
+        setTotalItems(data.meta.total || 0);
+        setTotalPages(data.meta.totalPages || 0);
+      }
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error fetching events:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch events');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize]);
+
+  // Handle pagination changes
+
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   const handleOpenModal = (item?: EventItem) => {
     if (item) {
       setEditingItem(item);
       setFormData({
         title: item.title,
-        description: item.description,
-        location: item.location,
-        date: item.date.split('T')[0],
-        time: item.time,
-        isHighlighted: item.isHighlighted,
+        description: item.description || '',
+        location: item.location || '',
+        eventDate: item.eventDate ? dayjs(item.eventDate) : null,
+        isHighlighted: item.isHighlighted || false,
+        duration: item.duration || 15,
+        isActive: item.isActive !== undefined ? item.isActive : true,
+        startDate: item.startDate ? dayjs(item.startDate) : null,
+        endDate: item.endDate ? dayjs(item.endDate) : null,
       });
     } else {
       setEditingItem(null);
@@ -91,270 +139,438 @@ export default function EventPage() {
         title: '',
         description: '',
         location: '',
-        date: '',
-        time: '',
+        eventDate: dayjs(),
         isHighlighted: false,
+        duration: 15,
+        isActive: true,
+        startDate: null,
+        endDate: null,
       });
     }
     setModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    if (hasFormChanges()) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
+        closeModalAndResetState();
+      }
+    } else {
+      closeModalAndResetState();
+    }
+  };
+
+  const closeModalAndResetState = () => {
     setModalOpen(false);
     setEditingItem(null);
-    setFormData({
-      title: '',
-      description: '',
-      location: '',
-      date: '',
-      time: '',
-      isHighlighted: false,
-    });
+    setHasUnsavedChanges(false);
+  };
+
+  const hasFormChanges = () => {
+    if (!editingItem) return formData.title !== '' || formData.description !== '';
+    
+    return (
+      formData.title !== editingItem.title ||
+      formData.description !== editingItem.description ||
+      formData.location !== editingItem.location ||
+      (formData.eventDate?.toISOString() !== dayjs(editingItem.eventDate).toISOString()) ||
+      formData.isHighlighted !== editingItem.isHighlighted ||
+      formData.duration !== editingItem.duration ||
+      formData.isActive !== editingItem.isActive ||
+      (formData.startDate?.toISOString() !== (editingItem.startDate ? dayjs(editingItem.startDate).toISOString() : null)) ||
+      (formData.endDate?.toISOString() !== (editingItem.endDate ? dayjs(editingItem.endDate).toISOString() : null))
+    );
+  };
+
+  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [field]: e.target.value });
+    setHasUnsavedChanges(true);
+  };
+
+  const handleSwitchChange = (field: string) => (checked: boolean) => {
+    setFormData({ ...formData, [field]: checked });
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDateChange = (field: string) => (date: dayjs.Dayjs | null) => {
+    setFormData({ ...formData, [field]: date });
+    setHasUnsavedChanges(true);
   };
 
   const handleSubmit = async () => {
     try {
-      const url = editingItem 
-        ? `/api/content/event/${editingItem.id}`
-        : '/api/content/event';
+      if (!formData.title) {
+        showSnackbar('Title is required', 'error');
+        return;
+      }
+
+      if (!formData.eventDate) {
+        showSnackbar('Event date is required', 'error');
+        return;
+      }
+
+      const payload = {
+        id: editingItem?.id,
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        eventDate: formData.eventDate ? formData.eventDate.toISOString() : null,
+        isHighlighted: formData.isHighlighted,
+        duration: formData.duration,
+        isActive: formData.isActive,
+        startDate: formData.startDate ? formData.startDate.toISOString() : null,
+        endDate: formData.endDate ? formData.endDate.toISOString() : null,
+      };
+
+      const url = '/api/content/event';
+      const method = editingItem ? 'PUT' : 'POST';
       
+      setLoading(true);
       const response = await fetch(url, {
-        method: editingItem ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to save item');
-      
-      await fetchItems();
-      handleCloseModal();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save event');
+      }
+
+      showSnackbar(`Event ${editingItem ? 'updated' : 'created'} successfully`, 'success');
+      closeModalAndResetState();
+      fetchItems();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error saving event:', err);
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while saving', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
-    
+    if (!window.confirm('Are you sure you want to delete this event?')) return;
+
     try {
-      const response = await fetch(`/api/content/event/${id}`, {
+      setLoading(true);
+      const response = await fetch(`/api/content/event?id=${id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete item');
-      
-      await fetchItems();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete event');
+      }
+
+      showSnackbar('Event deleted successfully', 'success');
+      fetchItems();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error deleting event:', err);
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while deleting', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Define columns for the ContentTypeTable
+  const columns = [
+    {
+      id: 'title',
+      label: 'Title',
+      render: (item: EventItem) => (
+        <Tooltip title={item.title} placement="top">
+          <Typography variant="body2" noWrap>
+            {item.title}
+          </Typography>
+        </Tooltip>
+      )
+    },
+    {
+      id: 'description',
+      label: 'Description',
+      render: (item: EventItem) => (
+        <Tooltip title={item.description} placement="top">
+          <Typography variant="body2" noWrap>
+            {item.description}
+          </Typography>
+        </Tooltip>
+      )
+    },
+    {
+      id: 'location',
+      label: 'Location',
+      render: (item: EventItem) => (
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <LocationIcon fontSize="small" sx={{ mr: 1 }} />
+          <Typography variant="body2" noWrap>
+            {item.location}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'eventDate',
+      label: 'Date',
+      render: (item: EventItem) => (
+        <Typography variant="body2">
+          {item.eventDate ? formatDate(item.eventDate) : 'N/A'}
+        </Typography>
+      )
+    },
+    {
+      id: 'isActive',
+      label: 'Status',
+      render: (item: EventItem) => (
+        <StatusChip 
+          label={item.isActive ? 'Active' : 'Inactive'} 
+          color={item.isActive ? 'success' : 'error'} 
+        />
+      ),
+      filterable: true,
+      filterOptions: [
+        { value: 'all', label: 'All' },
+        { value: 'Active', label: 'Active' },
+        { value: 'Inactive', label: 'Inactive' }
+      ]
+    },
+    {
+      id: 'isHighlighted',
+      label: 'Highlighted',
+      render: (item: EventItem) => (
+        <StatusChip 
+          label={item.isHighlighted ? 'Yes' : 'No'} 
+          color={item.isHighlighted ? 'primary' : 'default'} 
+        />
+      ),
+      filterable: true,
+      filterOptions: [
+        { value: 'all', label: 'All' },
+        { value: 'Yes', label: 'Yes' },
+        { value: 'No', label: 'No' }
+      ]
+    },
+    {
+      id: 'createdAt',
+      label: 'Created',
+      render: (item: EventItem) => (
+        <Typography variant="body2">
+          {formatDate(item.createdAt)}
+        </Typography>
+      )
+    }
+  ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5" component="h1">
-          Events
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenModal()}
-        >
-          Add New
-        </Button>
+    <Container maxWidth="xl">
+      <Box sx={{ py: 4 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Events
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Create and manage events to display on your screens
+          </Typography>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
+
+        <ContentTypeTable
+          items={items}
+          isLoading={loading}
+          subtitle="Schedule and promote upcoming events for your community"
+          emptyMessage="No events found. Click 'Add Event' to create your first event."
+          searchEmptyMessage="No events match your search criteria."
+          addButtonLabel="Add Event"
+          onAdd={() => handleOpenModal()}
+          onEdit={handleOpenModal}
+          onDelete={handleDelete}
+          onRefresh={fetchItems}
+          getItemId={(item) => item.id}
+          columns={columns}
+        />
       </Box>
 
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-
-      <Grid container spacing={2}>
-        {items.length === 0 ? (
-          <Grid item xs={12}>
-            <Box
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <Dialog
+          open={modalOpen}
+          onClose={handleCloseModal}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              m: 2,
+              borderRadius: '12px',
+              maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
+            }
+          }}
+        >
+          <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
+            {editingItem ? 'Edit Event' : 'New Event'}
+            <IconButton
+              aria-label="close"
+              onClick={handleCloseModal}
               sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 4,
-                bgcolor: 'background.paper',
-                borderRadius: 1,
-                textAlign: 'center',
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: 'text.secondary',
               }}
             >
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No events found
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Click the &quot;Add New&quot; button to create your first event.
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenModal()}
-              >
-                Add New
-              </Button>
-            </Box>
-          </Grid>
-        ) : (
-          items.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" component="h2" gutterBottom>
-                    {item.title}
-                    {item.isHighlighted && (
-                      <Tooltip title="Highlighted Event">
-                        <Box
-                          component="span"
-                          sx={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            bgcolor: 'primary.main',
-                            ml: 1,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      mb: 1,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {item.description}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 0.5 }}>
-                    <LocationIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary">
-                      {item.location}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <TimeIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(item.date).toLocaleDateString()} at {item.time}
-                    </Typography>
-                  </Box>
-                </CardContent>
-                <CardActions>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenModal(item)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))
-        )}
-      </Grid>
-
-      <Dialog
-        open={modalOpen}
-        onClose={handleCloseModal}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {editingItem ? 'Edit' : 'Add'} Event
-          <IconButton
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Title"
-              fullWidth
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            />
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              rows={4}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-            <TextField
-              label="Location"
-              fullWidth
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-            />
-            <TextField
-              label="Date"
-              type="date"
-              fullWidth
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="Time"
-              type="time"
-              fullWidth
-              value={formData.time}
-              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.isHighlighted}
-                  onChange={(e) => setFormData({ ...formData, isHighlighted: e.target.checked })}
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 2, pb: 2, px: '32px', paddingTop: '20px !important' }}>
+            {error && (
+              <Box sx={{ mb: 3 }}>
+                <Alert severity="error" onClose={() => setError(null)}>
+                  {error}
+                </Alert>
+              </Box>
+            )}
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <FormTextField
+                  id="title"
+                  label="Event Title"
+                  value={formData.title}
+                  onChange={handleInputChange('title')}
+                  required
+                  fullWidth
+                  helperText="Enter a clear, concise title for your event"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EventIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
-              }
-              label="Highlight Event"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModal}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingItem ? 'Save' : 'Add'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+              </Grid>
+              
+              <Grid item xs={12}>
+                <FormTextArea
+                  id="description"
+                  label="Description"
+                  value={formData.description}
+                  onChange={handleInputChange('description')}
+                  fullWidth
+                  minRows={3}
+                  maxRows={6}
+                  helperText="Provide details about the event including purpose, speakers, and what attendees can expect"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <DescriptionIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormTextField
+                  id="location"
+                  label="Location"
+                  value={formData.location}
+                  onChange={handleInputChange('location')}
+                  fullWidth
+                  helperText="Specify where the event will take place (room, building, address, etc.)"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocationIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormDateTimePicker
+                  label="Event Date & Time"
+                  value={formData.eventDate}
+                  onChange={handleDateChange('eventDate')}
+                  required
+                  fullWidth
+                  helperText="When will the event take place"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormTextField
+                  id="duration"
+                  label="Display Duration (seconds)"
+                  type="number"
+                  value={formData.duration}
+                  onChange={handleInputChange('duration')}
+                  fullWidth
+                  helperText="How long this event should display on screens (in seconds)"
+                  inputProps={{ min: 5, max: 60 }}
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormSwitch
+                  id="isHighlighted"
+                  label="Highlight Event"
+                  checked={formData.isHighlighted}
+                  onChange={handleSwitchChange('isHighlighted')}
+                  helperText="Give this event special visual emphasis on displays"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormDateTimePicker
+                  label="Start Showing From"
+                  value={formData.startDate}
+                  onChange={handleDateChange('startDate')}
+                  fullWidth
+                  helperText="Optional: When to start displaying this event (leave blank for immediate)"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormDateTimePicker
+                  label="Stop Showing After"
+                  value={formData.endDate}
+                  onChange={handleDateChange('endDate')}
+                  fullWidth
+                  helperText="Optional: When to stop displaying this event (leave blank to show indefinitely)"
+                />
+              </Grid>
+              
+              <Grid item xs={12}>
+                <FormSwitch
+                  id="isActive"
+                  label="Active Status"
+                  checked={formData.isActive}
+                  onChange={handleSwitchChange('isActive')}
+                  helperText="Toggle whether this event is currently displayed on screens"
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+            <Button onClick={handleCloseModal} color="inherit">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              variant="contained" 
+              color="primary"
+              disabled={loading}
+            >
+              {loading ? <CircularProgress size={24} /> : (editingItem ? 'Update' : 'Create')}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </LocalizationProvider>
+    </Container>
   );
 } 
