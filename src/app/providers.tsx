@@ -14,9 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CssBaseline />
         <UserProvider>
           <UnsavedChangesProvider>
-            <div suppressHydrationWarning>
+            {/* <div suppressHydrationWarning> */}
               {children}
-            </div>
+            {/* </div> */}
           </UnsavedChangesProvider>
         </UserProvider>
       </ThemeProvider>
