@@ -9,6 +9,8 @@ import {
   Switch,
   FormControlLabel,
   IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   AccessTime as AccessTimeIcon,
@@ -21,6 +23,10 @@ import {
   FormatClear,
   Undo,
   Redo,
+  FormatUnderlined,
+  Link as LinkIcon,
+  Title as TitleIcon,
+  ArrowDropDown,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -32,6 +38,8 @@ import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { FormSection } from '@/components/common/FormSection';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
 import DOMPurify from 'dompurify';
 
 // Menu bar component for the rich text editor
@@ -39,6 +47,29 @@ const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
     return null;
   }
+
+  const [headingAnchorEl, setHeadingAnchorEl] = useState<null | HTMLElement>(null);
+  const headingMenuOpen = Boolean(headingAnchorEl);
+
+  const handleHeadingClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setHeadingAnchorEl(event.currentTarget);
+  };
+
+  const handleHeadingClose = () => {
+    setHeadingAnchorEl(null);
+  };
+
+  const handleHeadingSelect = (level: number) => {
+    editor.chain().focus().toggleHeading({ level }).run();
+    handleHeadingClose();
+  };
+
+  const setLink = () => {
+    const url = window.prompt('URL');
+    if (url) {
+      editor.chain().focus().setLink({ href: url }).run();
+    }
+  };
 
   const ToolbarButton = ({ onClick, active, disabled, children, title }: any) => (
     <IconButton
@@ -48,8 +79,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
       disabled={disabled}
       sx={{
         borderRadius: 1,
+        padding: '4px',
+        margin: '0 2px',
         '&.Mui-disabled': {
           color: 'text.disabled',
+        },
+        '&.MuiIconButton-colorPrimary': {
+          backgroundColor: 'rgba(25, 118, 210, 0.08)',
         },
       }}
       title={title}
@@ -75,12 +111,14 @@ const MenuBar = ({ editor }: { editor: any }) => {
       sx={{
         display: 'flex',
         gap: 0.25,
-        p: 0.5,
+        p: 1,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
         alignItems: 'center',
         flexWrap: 'wrap',
+        borderTopLeftRadius: 4,
+        borderTopRightRadius: 4,
       }}
     >
       {/* History Controls */}
@@ -101,6 +139,66 @@ const MenuBar = ({ editor }: { editor: any }) => {
 
       <Divider />
 
+      {/* Headings */}
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <ToolbarButton
+          onClick={handleHeadingClick}
+          active={
+            editor.isActive('heading', { level: 1 }) ||
+            editor.isActive('heading', { level: 2 }) ||
+            editor.isActive('heading', { level: 3 })
+          }
+          title="Headings"
+        >
+          <TitleIcon fontSize="small" />
+          <ArrowDropDown fontSize="small" />
+        </ToolbarButton>
+        <Menu
+          anchorEl={headingAnchorEl}
+          open={headingMenuOpen}
+          onClose={handleHeadingClose}
+        >
+          <MenuItem 
+            onClick={() => handleHeadingSelect(1)}
+            sx={{ 
+              fontWeight: editor.isActive('heading', { level: 1 }) ? 'bold' : 'normal',
+              color: editor.isActive('heading', { level: 1 }) ? 'primary.main' : 'inherit'
+            }}
+          >
+            Heading 1
+          </MenuItem>
+          <MenuItem 
+            onClick={() => handleHeadingSelect(2)}
+            sx={{ 
+              fontWeight: editor.isActive('heading', { level: 2 }) ? 'bold' : 'normal',
+              color: editor.isActive('heading', { level: 2 }) ? 'primary.main' : 'inherit'
+            }}
+          >
+            Heading 2
+          </MenuItem>
+          <MenuItem 
+            onClick={() => handleHeadingSelect(3)}
+            sx={{ 
+              fontWeight: editor.isActive('heading', { level: 3 }) ? 'bold' : 'normal',
+              color: editor.isActive('heading', { level: 3 }) ? 'primary.main' : 'inherit'
+            }}
+          >
+            Heading 3
+          </MenuItem>
+          <MenuItem 
+            onClick={() => editor.chain().focus().setParagraph().run()}
+            sx={{ 
+              fontWeight: editor.isActive('paragraph') ? 'bold' : 'normal',
+              color: editor.isActive('paragraph') ? 'primary.main' : 'inherit'
+            }}
+          >
+            Normal Text
+          </MenuItem>
+        </Menu>
+      </Box>
+
+      <Divider />
+
       {/* Text Formatting */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -115,6 +213,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
         title="Italic"
       >
         <FormatItalic fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        active={editor.isActive('underline')}
+        title="Underline"
+      >
+        <FormatUnderlined fontSize="small" />
       </ToolbarButton>
 
       <Divider />
@@ -133,6 +238,17 @@ const MenuBar = ({ editor }: { editor: any }) => {
         title="Numbered List"
       >
         <FormatListNumbered fontSize="small" />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Link */}
+      <ToolbarButton
+        onClick={setLink}
+        active={editor.isActive('link')}
+        title="Insert Link"
+      >
+        <LinkIcon fontSize="small" />
       </ToolbarButton>
 
       <Divider />
@@ -199,7 +315,14 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
 
   // Initialize the rich text editor
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        validate: (href: string) => /^https?:\/\//.test(href),
+      }),
+    ],
     content: formData.content,
     onUpdate: ({ editor }) => {
       const newContent = editor.getHTML();
@@ -341,12 +464,41 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
                     borderRadius: 1,
                     overflow: 'hidden',
                     mb: 1,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     '& .ProseMirror': {
                       minHeight: '200px',
                       outline: 'none',
                       p: 2,
                       '&:focus': {
                         outline: 'none',
+                      },
+                      '& a': {
+                        color: 'primary.main',
+                        textDecoration: 'underline',
+                      },
+                      '& h1': {
+                        fontSize: '1.7rem',
+                        fontWeight: 500,
+                        marginBottom: '0.5em',
+                      },
+                      '& h2': {
+                        fontSize: '1.4rem',
+                        fontWeight: 500,
+                        marginBottom: '0.5em',
+                      },
+                      '& h3': {
+                        fontSize: '1.2rem',
+                        fontWeight: 500,
+                        marginBottom: '0.5em',
+                      },
+                      '& ul, & ol': {
+                        padding: '0 1rem',
+                      },
+                      '& code': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                        padding: '0.1em 0.3em',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
                       },
                     },
                     '& .ProseMirror p.is-editor-empty:first-of-type::before': {
