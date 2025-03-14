@@ -79,8 +79,10 @@ const MenuBar = ({ editor }: { editor: any }) => {
       disabled={disabled}
       sx={{
         borderRadius: 1,
-        padding: '4px',
-        margin: '0 2px',
+        padding: '2px',
+        margin: '0 1px',
+        minWidth: '28px',
+        height: '28px',
         '&.Mui-disabled': {
           color: 'text.disabled',
         },
@@ -97,10 +99,10 @@ const MenuBar = ({ editor }: { editor: any }) => {
   const Divider = () => (
     <Box
       sx={{
-        height: 16,
+        height: 14,
         width: 0.5,
         bgcolor: 'divider',
-        mx: 0.5,
+        mx: 0.3,
         opacity: 0.5,
       }}
     />
@@ -110,8 +112,8 @@ const MenuBar = ({ editor }: { editor: any }) => {
     <Box
       sx={{
         display: 'flex',
-        gap: 0.25,
-        p: 1,
+        gap: 0,
+        p: 0.75,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
@@ -127,14 +129,14 @@ const MenuBar = ({ editor }: { editor: any }) => {
         disabled={!editor.can().undo()}
         title="Undo"
       >
-        <Undo fontSize="small" />
+        <Undo fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         title="Redo"
       >
-        <Redo fontSize="small" />
+        <Redo fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
 
       <Divider />
@@ -150,8 +152,10 @@ const MenuBar = ({ editor }: { editor: any }) => {
           }
           title="Headings"
         >
-          <TitleIcon fontSize="small" />
-          <ArrowDropDown fontSize="small" />
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <TitleIcon fontSize="inherit" sx={{ fontSize: '18px' }} />
+            <ArrowDropDown fontSize="inherit" sx={{ fontSize: '18px', ml: -0.5 }} />
+          </Box>
         </ToolbarButton>
         <Menu
           anchorEl={headingAnchorEl}
@@ -205,21 +209,21 @@ const MenuBar = ({ editor }: { editor: any }) => {
         active={editor.isActive('bold')}
         title="Bold"
       >
-        <FormatBold fontSize="small" />
+        <FormatBold fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive('italic')}
         title="Italic"
       >
-        <FormatItalic fontSize="small" />
+        <FormatItalic fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         active={editor.isActive('underline')}
         title="Underline"
       >
-        <FormatUnderlined fontSize="small" />
+        <FormatUnderlined fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
 
       <Divider />
@@ -230,14 +234,14 @@ const MenuBar = ({ editor }: { editor: any }) => {
         active={editor.isActive('bulletList')}
         title="Bullet List"
       >
-        <FormatListBulleted fontSize="small" />
+        <FormatListBulleted fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive('orderedList')}
         title="Numbered List"
       >
-        <FormatListNumbered fontSize="small" />
+        <FormatListNumbered fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
 
       <Divider />
@@ -248,7 +252,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
         active={editor.isActive('link')}
         title="Insert Link"
       >
-        <LinkIcon fontSize="small" />
+        <LinkIcon fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
 
       <Divider />
@@ -259,13 +263,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
         active={editor.isActive('code')}
         title="Code"
       >
-        <CodeFormatIcon fontSize="small" />
+        <CodeFormatIcon fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         title="Clear Formatting"
       >
-        <FormatClear fontSize="small" />
+        <FormatClear fontSize="inherit" sx={{ fontSize: '18px' }} />
       </ToolbarButton>
     </Box>
   );
@@ -469,36 +473,50 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
                       minHeight: '200px',
                       outline: 'none',
                       p: 2,
+                      fontSize: '0.9rem',
+                      lineHeight: 1.5,
                       '&:focus': {
                         outline: 'none',
+                        backgroundColor: 'rgba(0, 0, 0, 0.01)',
                       },
                       '& a': {
                         color: 'primary.main',
                         textDecoration: 'underline',
                       },
                       '& h1': {
-                        fontSize: '1.7rem',
+                        fontSize: '1.5rem',
                         fontWeight: 500,
                         marginBottom: '0.5em',
+                        marginTop: '0.5em',
                       },
                       '& h2': {
-                        fontSize: '1.4rem',
+                        fontSize: '1.3rem',
                         fontWeight: 500,
                         marginBottom: '0.5em',
+                        marginTop: '0.5em',
                       },
                       '& h3': {
-                        fontSize: '1.2rem',
+                        fontSize: '1.1rem',
                         fontWeight: 500,
                         marginBottom: '0.5em',
+                        marginTop: '0.5em',
                       },
                       '& ul, & ol': {
                         padding: '0 1rem',
+                        margin: '0.5em 0',
+                      },
+                      '& li': {
+                        margin: '0.2em 0',
                       },
                       '& code': {
                         backgroundColor: 'rgba(0, 0, 0, 0.05)',
                         padding: '0.1em 0.3em',
                         borderRadius: '3px',
-                        fontSize: '0.9em',
+                        fontSize: '0.85em',
+                        fontFamily: 'monospace',
+                      },
+                      '& p': {
+                        margin: '0.5em 0',
                       },
                     },
                     '& .ProseMirror p.is-editor-empty:first-of-type::before': {
