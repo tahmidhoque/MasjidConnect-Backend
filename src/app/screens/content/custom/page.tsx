@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -19,6 +19,7 @@ import {
   CircularProgress,
   FormControlLabel,
   Switch,
+  Alert,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -39,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -188,12 +190,16 @@ export default function CustomContentPage() {
     duration: 30,
     isActive: true,
   });
+  const [originalData, setOriginalData] = useState<typeof formData | null>(null);
+  
+  const { setHasUnsavedChanges } = useUnsavedChanges();
 
   const editor = useEditor({
     extensions: [StarterKit],
     content: formData.content,
     onUpdate: ({ editor }) => {
-      setFormData({ ...formData, content: editor.getHTML() });
+      const newContent = editor.getHTML();
+      setFormData(prev => ({ ...prev, content: newContent }));
     },
   });
 
@@ -202,6 +208,18 @@ export default function CustomContentPage() {
       editor.commands.setContent(formData.content);
     }
   }, [formData.content, editor]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    if (originalData) {
+      const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
+      setHasUnsavedChanges(hasChanges);
+    } else {
+      // If no original data (new item), check if any required fields are filled
+      const hasChanges = formData.title.trim() !== '' || formData.content.trim() !== '';
+      setHasUnsavedChanges(hasChanges);
+    }
+  }, [formData, originalData, setHasUnsavedChanges]);
 
   useEffect(() => {
     fetchItems();
@@ -223,26 +241,44 @@ export default function CustomContentPage() {
 
   const handleOpenModal = (item?: CustomContentItem) => {
     if (item) {
-      setEditingItem(item);
-      setFormData({
+      const itemData = {
         title: item.title,
         content: item.content,
         duration: item.duration,
         isActive: item.isActive,
-      });
+      };
+      setEditingItem(item);
+      setFormData(itemData);
+      setOriginalData(itemData);
     } else {
-      setEditingItem(null);
-      setFormData({
+      const newItemData = {
         title: '',
         content: '',
         duration: 30,
         isActive: true,
-      });
+      };
+      setEditingItem(null);
+      setFormData(newItemData);
+      setOriginalData(null);
     }
     setModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    const hasChanges = originalData ? 
+      JSON.stringify(formData) !== JSON.stringify(originalData) : 
+      formData.title.trim() !== '' || formData.content.trim() !== '';
+    
+    if (hasChanges) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
+        closeModalAndResetState();
+      }
+    } else {
+      closeModalAndResetState();
+    }
+  };
+
+  const closeModalAndResetState = () => {
     setModalOpen(false);
     setEditingItem(null);
     setFormData({
@@ -251,6 +287,12 @@ export default function CustomContentPage() {
       duration: 30,
       isActive: true,
     });
+    setOriginalData(null);
+    setHasUnsavedChanges(false);
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async () => {
@@ -270,7 +312,8 @@ export default function CustomContentPage() {
       if (!response.ok) throw new Error('Failed to save item');
       
       await fetchItems();
-      handleCloseModal();
+      setHasUnsavedChanges(false);
+      closeModalAndResetState();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     }
@@ -316,9 +359,9 @@ export default function CustomContentPage() {
       </Box>
 
       {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
-        </Typography>
+        </Alert>
       )}
 
       <Grid container spacing={2}>
@@ -438,7 +481,7 @@ export default function CustomContentPage() {
               label="Title"
               fullWidth
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => handleInputChange('title', e.target.value)}
             />
             <Box>
               <Typography variant="subtitle2" gutterBottom>
@@ -473,14 +516,14 @@ export default function CustomContentPage() {
               type="number"
               fullWidth
               value={formData.duration}
-              onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 30 })}
+              onChange={(e) => handleInputChange('duration', parseInt(e.target.value) || 30)}
               InputProps={{ inputProps: { min: 5, max: 300 } }}
             />
             <FormControlLabel
               control={
                 <Switch
                   checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  onChange={(e) => handleInputChange('isActive', e.target.checked)}
                 />
               }
               label="Active"

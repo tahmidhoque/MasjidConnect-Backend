@@ -35,6 +35,9 @@ import dayjs from 'dayjs';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/components/common/FormFields';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import { ContentForm } from '@/components/content/content-form';
+import { ContentType } from '@prisma/client';
+import { ContentItemData } from '@/lib/services/content';
 
 // Custom status chip component
 interface StatusChipProps {
@@ -72,17 +75,6 @@ export default function EventPage() {
   const [items, setItems] = useState<EventItem[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<EventItem | null>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    location: '',
-    eventDate: null as dayjs.Dayjs | null,
-    isHighlighted: false,
-    duration: 15,
-    isActive: true,
-    startDate: null as dayjs.Dayjs | null,
-    endDate: null as dayjs.Dayjs | null,
-  });
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -114,140 +106,18 @@ export default function EventPage() {
     }
   }, [page, pageSize]);
 
-  // Handle pagination changes
-
-
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
   const handleOpenModal = (item?: EventItem) => {
-    if (item) {
-      setEditingItem(item);
-      setFormData({
-        title: item.title,
-        description: item.description || '',
-        location: item.location || '',
-        eventDate: item.eventDate ? dayjs(item.eventDate) : null,
-        isHighlighted: item.isHighlighted || false,
-        duration: item.duration || 15,
-        isActive: item.isActive !== undefined ? item.isActive : true,
-        startDate: item.startDate ? dayjs(item.startDate) : null,
-        endDate: item.endDate ? dayjs(item.endDate) : null,
-      });
-    } else {
-      setEditingItem(null);
-      setFormData({
-        title: '',
-        description: '',
-        location: '',
-        eventDate: dayjs(),
-        isHighlighted: false,
-        duration: 15,
-        isActive: true,
-        startDate: null,
-        endDate: null,
-      });
-    }
+    setEditingItem(item || null);
     setModalOpen(true);
   };
 
   const handleCloseModal = () => {
-    if (hasFormChanges()) {
-      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
-        closeModalAndResetState();
-      }
-    } else {
-      closeModalAndResetState();
-    }
-  };
-
-  const closeModalAndResetState = () => {
     setModalOpen(false);
     setEditingItem(null);
-    setHasUnsavedChanges(false);
-  };
-
-  const hasFormChanges = () => {
-    if (!editingItem) return formData.title !== '' || formData.description !== '';
-    
-    return (
-      formData.title !== editingItem.title ||
-      formData.description !== editingItem.description ||
-      formData.location !== editingItem.location ||
-      (formData.eventDate?.toISOString() !== dayjs(editingItem.eventDate).toISOString()) ||
-      formData.isHighlighted !== editingItem.isHighlighted ||
-      formData.duration !== editingItem.duration ||
-      formData.isActive !== editingItem.isActive ||
-      (formData.startDate?.toISOString() !== (editingItem.startDate ? dayjs(editingItem.startDate).toISOString() : null)) ||
-      (formData.endDate?.toISOString() !== (editingItem.endDate ? dayjs(editingItem.endDate).toISOString() : null))
-    );
-  };
-
-  const handleInputChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [field]: e.target.value });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSwitchChange = (field: string) => (checked: boolean) => {
-    setFormData({ ...formData, [field]: checked });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleDateChange = (field: string) => (date: dayjs.Dayjs | null) => {
-    setFormData({ ...formData, [field]: date });
-    setHasUnsavedChanges(true);
-  };
-
-  const handleSubmit = async () => {
-    try {
-      if (!formData.title) {
-        showSnackbar('Title is required', 'error');
-        return;
-      }
-
-      if (!formData.eventDate) {
-        showSnackbar('Event date is required', 'error');
-        return;
-      }
-
-      const payload = {
-        id: editingItem?.id,
-        title: formData.title,
-        description: formData.description,
-        location: formData.location,
-        eventDate: formData.eventDate ? formData.eventDate.toISOString() : null,
-        isHighlighted: formData.isHighlighted,
-        duration: formData.duration,
-        isActive: formData.isActive,
-        startDate: formData.startDate ? formData.startDate.toISOString() : null,
-        endDate: formData.endDate ? formData.endDate.toISOString() : null,
-      };
-
-      const url = '/api/content/event';
-      const method = editingItem ? 'PUT' : 'POST';
-      
-      setLoading(true);
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save event');
-      }
-
-      showSnackbar(`Event ${editingItem ? 'updated' : 'created'} successfully`, 'success');
-      closeModalAndResetState();
-      fetchItems();
-    } catch (err) {
-      console.error('Error saving event:', err);
-      showSnackbar(err instanceof Error ? err.message : 'An error occurred while saving', 'error');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDelete = async (id: string) => {
@@ -438,182 +308,49 @@ export default function EventPage() {
         />
       </Box>
 
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Dialog
-          open={modalOpen}
-          onClose={handleCloseModal}
-          maxWidth="md"
-          fullWidth
-          PaperProps={{
-            sx: {
-              m: 2,
-              borderRadius: '12px',
-              maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
-            }
-          }}
-        >
-          <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
-            {editingItem ? 'Edit Event' : 'New Event'}
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseModal}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'text.secondary',
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 2, pb: 2, px: '32px', paddingTop: '20px !important' }}>
-            {error && (
-              <Box sx={{ mb: 3 }}>
-                <Alert severity="error" onClose={() => setError(null)}>
-                  {error}
-                </Alert>
-              </Box>
-            )}
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <FormTextField
-                  id="title"
-                  label="Event Title"
-                  value={formData.title}
-                  onChange={handleInputChange('title')}
-                  required
-                  fullWidth
-                  helperText="Enter a clear, concise title for your event"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EventIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <FormTextArea
-                  id="description"
-                  label="Description"
-                  value={formData.description}
-                  onChange={handleInputChange('description')}
-                  fullWidth
-                  minRows={3}
-                  maxRows={6}
-                  helperText="Provide details about the event including purpose, speakers, and what attendees can expect"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <DescriptionIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormTextField
-                  id="location"
-                  label="Location"
-                  value={formData.location}
-                  onChange={handleInputChange('location')}
-                  fullWidth
-                  helperText="Specify where the event will take place (room, building, address, etc.)"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LocationIcon color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormDateTimePicker
-                  label="Event Date & Time"
-                  value={formData.eventDate}
-                  onChange={handleDateChange('eventDate')}
-                  required
-                  fullWidth
-                  helperText="When will the event take place"
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormTextField
-                  id="duration"
-                  label="Display Duration (seconds)"
-                  type="number"
-                  value={formData.duration}
-                  onChange={handleInputChange('duration')}
-                  fullWidth
-                  helperText="How long this event should display on screens (in seconds)"
-                  inputProps={{ min: 5, max: 60 }}
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormSwitch
-                  id="isHighlighted"
-                  label="Highlight Event"
-                  checked={formData.isHighlighted}
-                  onChange={handleSwitchChange('isHighlighted')}
-                  helperText="Give this event special visual emphasis on displays"
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormDateTimePicker
-                  label="Start Showing From"
-                  value={formData.startDate}
-                  onChange={handleDateChange('startDate')}
-                  fullWidth
-                  helperText="Optional: When to start displaying this event (leave blank for immediate)"
-                />
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <FormDateTimePicker
-                  label="Stop Showing After"
-                  value={formData.endDate}
-                  onChange={handleDateChange('endDate')}
-                  fullWidth
-                  helperText="Optional: When to stop displaying this event (leave blank to show indefinitely)"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <FormSwitch
-                  id="isActive"
-                  label="Active Status"
-                  checked={formData.isActive}
-                  onChange={handleSwitchChange('isActive')}
-                  helperText="Toggle whether this event is currently displayed on screens"
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
-            <Button onClick={handleCloseModal} color="inherit">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              variant="contained" 
-              color="primary"
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : (editingItem ? 'Update' : 'Create')}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </LocalizationProvider>
+      <Dialog
+        open={modalOpen}
+        onClose={handleCloseModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingItem ? 'Edit Event' : 'Create Event'}
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseModal}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <ContentForm
+            initialData={editingItem ? {
+              id: editingItem.id,
+              title: editingItem.title,
+              content: editingItem.description,
+              type: ContentType.EVENT,
+              duration: editingItem.duration,
+              isActive: editingItem.isActive,
+              startDate: editingItem.startDate ? new Date(editingItem.startDate) : undefined,
+              endDate: editingItem.endDate ? new Date(editingItem.endDate) : undefined,
+              createdAt: new Date(editingItem.createdAt),
+              updatedAt: new Date(editingItem.updatedAt)
+            } : undefined}
+            onSuccess={() => {
+              handleCloseModal();
+              fetchItems();
+              showSnackbar(editingItem ? 'Event updated successfully' : 'Event created successfully', 'success');
+            }}
+            onCancel={handleCloseModal}
+          />
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 } 

@@ -22,6 +22,7 @@ import {
   Collapse,
   Skeleton,
   Container,
+  Chip,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -38,6 +39,7 @@ import { useUserContext } from '@/contexts/UserContext';
 import ClientOnly from '@/components/ClientOnly';
 import { clearUserData } from '@/lib/auth-client';
 import PageHeader from './page-header';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 const drawerWidth = 280;
 
@@ -167,6 +169,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const { confirmNavigation } = useUnsavedChanges();
 
   // Extract title and content using the simpler function
   const extractedData = extractPageTitle(children);
@@ -220,6 +223,15 @@ export default function DashboardLayout({
       router.push('/login?signOut=true');
     }
   }, [router]);
+
+  const handleNavigation = useCallback((path: string) => {
+    confirmNavigation(() => {
+      router.push(path);
+      if (isMobile) {
+        setMobileOpen(false);
+      }
+    });
+  }, [confirmNavigation, router, isMobile]);
 
   // Memoize user profile data
   const userProfileData = useMemo(() => ({
@@ -284,8 +296,7 @@ export default function DashboardLayout({
               {userMenuItems.map((item) => (
                 <ListItem key={item.path} disablePadding sx={{ pl: 2, pr: 2, py: 0.25 }}>
                   <ListItemButton
-                    component="a"
-                    href={item.path}
+                    onClick={() => handleNavigation(item.path)}
                     selected={pathname === item.path}
                     sx={{
                       borderRadius: 1.5,
@@ -355,11 +366,11 @@ export default function DashboardLayout({
           <React.Fragment key={item.path}>
             <ListItem disablePadding sx={{ pl: 2, pr: 2, py: 0.25 }}>
               <ListItemButton
-                component={item.children ? 'button' : 'a'}
-                href={item.children ? undefined : item.path}
-                onClick={item.children ? 
-                  (item.title === 'Content Management' ? handleContentMenuToggle : undefined) 
-                  : undefined}
+                onClick={
+                  item.children 
+                    ? (item.title === 'Content Management' ? handleContentMenuToggle : undefined) 
+                    : () => handleNavigation(item.path)
+                }
                 selected={pathname === item.path}
                 sx={{
                   borderRadius: 1.5,
@@ -439,8 +450,7 @@ export default function DashboardLayout({
                     ) : (
                       <ListItem disablePadding sx={{ pl: 4, pr: 2, py: 0.25 }}>
                         <ListItemButton
-                          component="a"
-                          href={child.path}
+                          onClick={() => handleNavigation(child.path)}
                           selected={pathname === child.path}
                           sx={{
                             borderRadius: 1.5,
@@ -505,6 +515,7 @@ export default function DashboardLayout({
     handleUserMenuToggle,
     handleContentMenuToggle,
     handleLogout,
+    handleNavigation,
     session
   ]);
 

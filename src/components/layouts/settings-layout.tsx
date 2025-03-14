@@ -24,6 +24,7 @@ import {
   Notifications as NotificationsIcon,
   Menu as MenuIcon,
 } from '@mui/icons-material';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 const drawerWidth = 280;
 
@@ -65,9 +66,19 @@ export default function SettingsLayout({
   const pathname = usePathname();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { confirmNavigation } = useUnsavedChanges();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleNavigation = (path: string) => {
+    confirmNavigation(() => {
+      router.push(path);
+      if (isMobile) {
+        handleDrawerToggle();
+      }
+    });
   };
 
   // Memoize the drawer component to prevent re-renders during navigation
@@ -84,12 +95,7 @@ export default function SettingsLayout({
           <ListItem key={item.path} disablePadding>
             <ListItemButton
               selected={pathname === item.path}
-              onClick={() => {
-                router.push(item.path);
-                if (isMobile) {
-                  handleDrawerToggle();
-                }
-              }}
+              onClick={() => handleNavigation(item.path)}
             >
               <ListItemIcon>{item.icon}</ListItemIcon>
               <ListItemText primary={item.title} />
@@ -98,10 +104,11 @@ export default function SettingsLayout({
         ))}
       </List>
     </Box>
-  ), [pathname, router, isMobile, handleDrawerToggle]);
+  ), [pathname, handleNavigation]);
 
   return (
     <Box sx={{ display: 'flex' }}>
+      {/* Mobile drawer toggle */}
       <Box
         component="nav"
         sx={{
@@ -110,30 +117,12 @@ export default function SettingsLayout({
         }}
       >
         {/* Mobile drawer */}
-        {isMobile && (
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{
-              position: 'fixed',
-              top: theme.spacing(1),
-              left: theme.spacing(1),
-              zIndex: theme.zIndex.drawer + 2,
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
-        )}
-        
-        {/* Mobile drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
           ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
+            keepMounted: true, // Better open performance on mobile
           }}
           sx={{
             display: { xs: 'block', md: 'none' },
@@ -145,7 +134,7 @@ export default function SettingsLayout({
         >
           {drawer}
         </Drawer>
-        
+
         {/* Desktop drawer */}
         <Drawer
           variant="permanent"
@@ -154,7 +143,8 @@ export default function SettingsLayout({
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              borderRight: `1px solid ${theme.palette.divider}`,
+              borderRight: '1px solid rgba(0, 0, 0, 0.12)',
+              boxShadow: 'none',
             },
           }}
           open
@@ -162,18 +152,41 @@ export default function SettingsLayout({
           {drawer}
         </Drawer>
       </Box>
-      
+
       {/* Main content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
           width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          minHeight: '100vh',
         }}
       >
-        {children}
+        {/* Mobile app bar */}
+        <Box
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            alignItems: 'center',
+            p: 2,
+            borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+          }}
+        >
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={handleDrawerToggle}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div">
+            Settings
+          </Typography>
+        </Box>
+
+        {/* Page content */}
+        <Box sx={{ p: { xs: 2, md: 4 } }}>{children}</Box>
       </Box>
     </Box>
   );
