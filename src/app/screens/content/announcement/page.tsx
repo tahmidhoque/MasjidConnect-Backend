@@ -19,6 +19,8 @@ import {
   CircularProgress,
   Switch,
   FormControlLabel,
+  Container,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -26,6 +28,9 @@ import {
   Delete as DeleteIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
+import { StatusChip } from '@/components/content/table/StatusChip';
+import { formatDate, formatDuration } from '@/lib/content-helper';
 
 interface AnnouncementItem {
   id: string;
@@ -51,19 +56,28 @@ export default function AnnouncementPage() {
     startDate: '',
     endDate: '',
   });
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [page, pageSize]);
 
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/content/announcement');
+      const response = await fetch(`/api/content/announcement?page=${page}&pageSize=${pageSize}`);
       if (!response.ok) throw new Error('Failed to fetch items');
       const data = await response.json();
-      setItems(data);
+      setItems(data.items || data);
+      if (data.meta) {
+        setTotalItems(data.meta.total || 0);
+        setTotalPages(data.meta.totalPages || 0);
+      }
     } catch (err) {
+      console.error('Error fetching announcements:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -129,9 +143,12 @@ export default function AnnouncementPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Are you sure you want to delete this announcement?')) {
+      return;
+    }
     
     try {
+      setLoading(true);
       const response = await fetch(`/api/content/announcement/${id}`, {
         method: 'DELETE',
       });
@@ -140,202 +157,162 @@ export default function AnnouncementPage() {
       
       await fetchItems();
     } catch (err) {
+      console.error('Error deleting announcement:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
+  // Table columns configuration
+  const columns = [
+    {
+      id: 'title',
+      label: 'Title',
+      render: (item: AnnouncementItem) => item.title,
+    },
+    {
+      id: 'content',
+      label: 'Content',
+      render: (item: AnnouncementItem) => (
+        <Tooltip title={item.content} placement="top">
+          <Typography noWrap sx={{ maxWidth: 250 }}>
+            {item.content}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'urgent',
+      label: 'Urgent',
+      render: (item: AnnouncementItem) => (
+        item.isUrgent ? 
+        <Tooltip title="This announcement is marked as urgent">
+          <Typography color="error" fontWeight="medium">Urgent</Typography>
+        </Tooltip> : 
+        <Typography color="text.secondary">Normal</Typography>
+      ),
+      filterable: true,
+      filterOptions: [
+        { value: 'true', label: 'Urgent' },
+        { value: 'false', label: 'Normal' },
+      ],
+    },
+    {
+      id: 'dateRange',
+      label: 'Date Range',
+      render: (item: AnnouncementItem) => (
+        `${formatDate(item.startDate)} - ${formatDate(item.endDate)}`
+      ),
+    },
+  ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h5" component="h1">
-          Announcements
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenModal()}
-        >
-          Add New
-        </Button>
+    <Container maxWidth="xl">
+      <Box sx={{ py: 4 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Announcements
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Create and manage announcements to display on your screens
+          </Typography>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
+
+        <ContentTypeTable
+          items={items}
+          isLoading={loading}
+          subtitle="Share important information with your community through announcements"
+          emptyMessage="No announcements have been added yet. Click 'Add New' to create your first announcement."
+          searchEmptyMessage="No announcements match your search criteria."
+          addButtonLabel="Add New"
+          onAdd={() => handleOpenModal()}
+          onEdit={(item: AnnouncementItem) => handleOpenModal(item)}
+          onDelete={handleDelete}
+          onRefresh={fetchItems}
+          getItemId={(item: AnnouncementItem) => item.id}
+          columns={columns}
+        />
       </Box>
 
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
-
-      <Grid container spacing={2}>
-        {items.length === 0 ? (
-          <Grid item xs={12}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 4,
-                bgcolor: 'background.paper',
-                borderRadius: 1,
-                textAlign: 'center',
-              }}
-            >
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No announcements found
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Click the &quot;Add New&quot; button to create your first announcement.
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenModal()}
-              >
-                Add New
-              </Button>
-            </Box>
-          </Grid>
-        ) : (
-          items.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" component="h2" gutterBottom>
-                    {item.title}
-                    {item.isUrgent && (
-                      <Tooltip title="Urgent">
-                        <Box
-                          component="span"
-                          sx={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            bgcolor: 'error.main',
-                            ml: 1,
-                            verticalAlign: 'middle',
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      mb: 1,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {item.content}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Start: {new Date(item.startDate).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    End: {new Date(item.endDate).toLocaleDateString()}
-                  </Typography>
-                </CardContent>
-                <CardActions>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenModal(item)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))
-        )}
-      </Grid>
-
-      <Dialog
-        open={modalOpen}
-        onClose={handleCloseModal}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={modalOpen} onClose={handleCloseModal} maxWidth="md" fullWidth>
         <DialogTitle>
-          {editingItem ? 'Edit' : 'Add'} Announcement
+          {editingItem ? 'Edit Announcement' : 'New Announcement'}
           <IconButton
+            aria-label="close"
             onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Title"
-              fullWidth
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            />
-            <TextField
-              label="Content"
-              fullWidth
-              multiline
-              rows={4}
-              value={formData.content}
-              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.isUrgent}
-                  onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
-                />
-              }
-              label="Urgent"
-            />
-            <TextField
-              label="Start Date"
-              type="date"
-              fullWidth
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-            <TextField
-              label="End Date"
-              type="date"
-              fullWidth
-              value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Title"
+            type="text"
+            fullWidth
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Content"
+            type="text"
+            fullWidth
+            multiline
+            rows={4}
+            value={formData.content}
+            onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData.isUrgent}
+                onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
+              />
+            }
+            label="Urgent"
+            sx={{ mb: 2, display: 'block' }}
+          />
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Start Date"
+                type="date"
+                fullWidth
+                value={formData.startDate}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="End Date"
+                type="date"
+                fullWidth
+                value={formData.endDate}
+                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseModal}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingItem ? 'Save' : 'Add'}
+          <Button onClick={handleSubmit} variant="contained" color="primary">
+            {editingItem ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 } 

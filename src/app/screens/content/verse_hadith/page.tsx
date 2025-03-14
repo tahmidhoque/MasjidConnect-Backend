@@ -32,6 +32,8 @@ import {
   ListItemButton,
   ListItemText,
   Alert,
+  Container,
+  Divider,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -39,6 +41,9 @@ import {
   Delete as DeleteIcon,
   Close as CloseIcon,
 } from '@mui/icons-material';
+import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
+import { StatusChip } from '@/components/content/table/StatusChip';
+import { formatDuration, getReadableContentType } from '@/lib/content-helper';
 
 interface VerseHadithItem {
   id: string;
@@ -101,19 +106,28 @@ export default function VerseHadithPage() {
   const [quranSearchResults, setQuranSearchResults] = useState<any[]>([]);
   const [quranSearchModalOpen, setQuranSearchModalOpen] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<{surah: number, ayah: number, surahName?: string} | null>(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     fetchItems();
-  }, []);
+  }, [page, pageSize]);
 
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/content/verse_hadith');
-      if (!response.ok) throw new Error('Failed to fetch items');
+      const response = await fetch(`/api/content/verse_hadith?page=${page}&pageSize=${pageSize}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch items');
+      }
       const data = await response.json();
-      setItems(data);
+      setItems(data.items || []);
+      setTotalItems(data.meta?.total || 0);
+      setTotalPages(data.meta?.totalPages || 0);
     } catch (err) {
+      console.error('Error fetching verse/hadith items:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -431,18 +445,27 @@ export default function VerseHadithPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Are you sure you want to delete this item?')) {
+      return;
+    }
     
     try {
-      const response = await fetch(`/api/content/verse_hadith/${id}`, {
+      setLoading(true);
+      const response = await fetch(`/api/content/verse_hadith?id=${id}`, {
         method: 'DELETE',
       });
-
-      if (!response.ok) throw new Error('Failed to delete item');
       
-      await fetchItems();
+      if (!response.ok) {
+        throw new Error('Failed to delete item');
+      }
+      
+      // Refresh the items list
+      fetchItems();
     } catch (err) {
+      console.error('Error deleting item:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -618,6 +641,56 @@ export default function VerseHadithPage() {
     }
   };
 
+  // Table columns configuration
+  const columns = [
+    {
+      id: 'title',
+      label: 'Title',
+      render: (item: VerseHadithItem) => item.title,
+    },
+    {
+      id: 'type',
+      label: 'Type',
+      render: (item: VerseHadithItem) => getReadableContentType(item.content.type),
+      filterable: true,
+      filterOptions: [
+        { value: 'QURAN_VERSE', label: 'Quran Verse' },
+        { value: 'HADITH', label: 'Hadith' },
+      ],
+    },
+    {
+      id: 'translation',
+      label: 'Translation',
+      render: (item: VerseHadithItem) => (
+        <Tooltip title={item.content.translation} placement="top">
+          <Typography noWrap sx={{ maxWidth: 250 }}>
+            {item.content.translation}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    {
+      id: 'reference',
+      label: 'Reference',
+      render: (item: VerseHadithItem) => item.content.reference,
+    },
+    {
+      id: 'duration',
+      label: 'Duration',
+      render: (item: VerseHadithItem) => formatDuration(item.duration),
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      render: (item: VerseHadithItem) => <StatusChip isActive={item.isActive} />,
+      filterable: true,
+      filterOptions: [
+        { value: 'true', label: 'Active' },
+        { value: 'false', label: 'Inactive' },
+      ],
+    },
+  ];
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -627,115 +700,34 @@ export default function VerseHadithPage() {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Verse/Hadith Content
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenModal()}
-        >
-          Add New
-        </Button>
+    <Container maxWidth="xl">
+      <Box sx={{ py: 4 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Verses & Hadiths
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary">
+            Manage Quranic verses and hadith content to display on your screens
+          </Typography>
+          <Divider sx={{ mt: 2 }} />
+        </Box>
+
+        <ContentTypeTable
+          items={items}
+          isLoading={loading}
+          subtitle="Display meaningful verses and hadiths from the Quran and authentic collections"
+          emptyMessage="No verses or hadiths have been added yet. Click 'Add New' to create your first item."
+          searchEmptyMessage="No verses or hadiths match your search criteria."
+          addButtonLabel="Add New"
+          onAdd={() => handleOpenModal()}
+          onEdit={(item: VerseHadithItem) => handleOpenModal(item)}
+          onDelete={handleDelete}
+          onRefresh={fetchItems}
+          getItemId={(item: VerseHadithItem) => item.id}
+          columns={columns}
+        />
       </Box>
-
-      <Grid container spacing={3}>
-        {loading ? (
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          </Grid>
-        ) : items.length === 0 ? (
-          <Grid item xs={12}>
-            <Paper sx={{ p: 4, textAlign: 'center' }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No verse/hadith content items yet
-              </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={() => handleOpenModal()}
-                sx={{ mt: 2 }}
-              >
-                Add Your First Verse/Hadith
-              </Button>
-            </Paper>
-          </Grid>
-        ) : (
-          items.map((item) => (
-            <Grid item xs={12} sm={6} md={4} key={item.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" component="h2" gutterBottom>
-                    {item.title}
-                  </Typography>
-                  {item.content.arabicText && (
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        mb: 2,
-                        textAlign: 'right',
-                        fontFamily: 'Scheherazade New, serif',
-                        direction: 'rtl',
-                        fontSize: '1.25rem',
-                      }}
-                    >
-                      {item.content.arabicText}
-                    </Typography>
-                  )}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mb: 1,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {item.content.translation}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Reference: {item.content.reference}
-                  </Typography>
-                  {item.content.source && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Source: {item.content.source}
-                    </Typography>
-                  )}
-                  {item.content.grade && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Grade: {item.content.grade}
-                    </Typography>
-                  )}
-                </CardContent>
-                <CardActions>
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenModal(item)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))
-        )}
-      </Grid>
-
+      
       <Dialog
         open={modalOpen}
         onClose={handleCloseModal}
@@ -1336,6 +1328,6 @@ export default function VerseHadithPage() {
           <Button onClick={handleCloseQuranSearchModal}>Cancel</Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 } 
