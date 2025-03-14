@@ -44,6 +44,7 @@ import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { ContentModal } from '@/components/common/ContentModal';
 import { CustomForm } from '@/components/content/custom-form';
 import { ContentType } from '@prisma/client';
+import DOMPurify from 'dompurify';
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -430,7 +431,7 @@ export default function CustomContentPage() {
                         overflow: 'hidden',
                       },
                     }}
-                    dangerouslySetInnerHTML={{ __html: item.content }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.content) }}
                   />
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <DurationIcon fontSize="small" color="action" />
@@ -474,7 +475,7 @@ export default function CustomContentPage() {
             title: editingItem.title,
             content: {
               text: editingItem.content,
-              isHTML: false
+              isHTML: editingItem.content.startsWith('<') && editingItem.content.includes('</') // Basic HTML detection
             },
             type: ContentType.CUSTOM,
             duration: editingItem.duration,

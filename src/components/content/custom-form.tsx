@@ -8,10 +8,19 @@ import {
   CircularProgress,
   Switch,
   FormControlLabel,
+  IconButton,
 } from '@mui/material';
 import {
   AccessTime as AccessTimeIcon,
   Code as CodeIcon,
+  FormatBold,
+  FormatItalic,
+  FormatListBulleted,
+  FormatListNumbered,
+  Code as CodeFormatIcon,
+  FormatClear,
+  Undo,
+  Redo,
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -23,6 +32,7 @@ import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { FormSection } from '@/components/common/FormSection';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import DOMPurify from 'dompurify';
 
 // Menu bar component for the rich text editor
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -31,14 +41,12 @@ const MenuBar = ({ editor }: { editor: any }) => {
   }
 
   const ToolbarButton = ({ onClick, active, disabled, children, title }: any) => (
-    <Button
+    <IconButton
       size="small"
       onClick={onClick}
-      color={active ? "primary" : "inherit"}
+      color={active ? "primary" : "default"}
       disabled={disabled}
       sx={{
-        minWidth: 'auto',
-        p: 0.5,
         borderRadius: 1,
         '&.Mui-disabled': {
           color: 'text.disabled',
@@ -47,61 +55,101 @@ const MenuBar = ({ editor }: { editor: any }) => {
       title={title}
     >
       {children}
-    </Button>
+    </IconButton>
+  );
+
+  const Divider = () => (
+    <Box
+      sx={{
+        height: 16,
+        width: 0.5,
+        bgcolor: 'divider',
+        mx: 0.5,
+        opacity: 0.5,
+      }}
+    />
   );
 
   return (
     <Box
       sx={{
         display: 'flex',
-        gap: 0.5,
-        p: 1,
+        gap: 0.25,
+        p: 0.5,
         bgcolor: 'background.paper',
         borderBottom: 1,
         borderColor: 'divider',
+        alignItems: 'center',
         flexWrap: 'wrap',
       }}
     >
+      {/* History Controls */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().undo().run()}
+        disabled={!editor.can().undo()}
+        title="Undo"
+      >
+        <Undo fontSize="small" />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().redo().run()}
+        disabled={!editor.can().redo()}
+        title="Redo"
+      >
+        <Redo fontSize="small" />
+      </ToolbarButton>
+
+      <Divider />
+
+      {/* Text Formatting */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive('bold')}
         title="Bold"
       >
-        Bold
+        <FormatBold fontSize="small" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive('italic')}
         title="Italic"
       >
-        Italic
+        <FormatItalic fontSize="small" />
       </ToolbarButton>
+
+      <Divider />
+
+      {/* Lists */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive('bulletList')}
         title="Bullet List"
       >
-        Bullet List
+        <FormatListBulleted fontSize="small" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive('orderedList')}
         title="Numbered List"
       >
-        Numbered List
+        <FormatListNumbered fontSize="small" />
       </ToolbarButton>
+
+      <Divider />
+
+      {/* Code and Clear */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCode().run()}
         active={editor.isActive('code')}
         title="Code"
       >
-        Code
+        <CodeFormatIcon fontSize="small" />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         title="Clear Formatting"
       >
-        Clear
+        <FormatClear fontSize="small" />
       </ToolbarButton>
     </Box>
   );
@@ -193,7 +241,7 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
     try {
       // Create content object with meta data
       const contentData = {
-        text: formData.content,
+        text: formData.isHTML ? DOMPurify.sanitize(formData.content) : formData.content,
         isHTML: formData.isHTML
       };
 
@@ -278,8 +326,8 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   required
-                  helperText="Enter your HTML content"
-                  tooltip="HTML content will be rendered directly in the display"
+                  helperText="Enter your HTML content. Note: JavaScript will be sanitized for security."
+                  tooltip="HTML content will be rendered directly in the display. For security, JavaScript will be removed."
                   rows={8}
                 />
               ) : (
