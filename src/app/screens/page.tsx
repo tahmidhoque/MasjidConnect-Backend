@@ -19,6 +19,7 @@ import {
   Alert,
   Tooltip,
   CircularProgress,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -28,8 +29,13 @@ import {
   Link as LinkIcon,
   LinkOff as LinkOffIcon,
   ScreenShare as ScreenIcon,
+  LocationOn as LocationIcon,
+  Badge as BadgeIcon,
 } from '@mui/icons-material';
 import { formatLastSeen, isScreenOnline } from '@/lib/screen-utils';
+import { ContentModal } from '@/components/common/ContentModal';
+import { FormSection } from '@/components/common/FormSection';
+import { FormTextField } from '@/components/common/FormFields';
 
 interface Screen {
   id: string;
@@ -227,59 +233,93 @@ export default function ScreensPage() {
       </Grid>
 
       {/* Pair New Screen Dialog */}
-      <Dialog 
+      <ContentModal 
         open={pairingDialog} 
         onClose={handleClosePairingDialog}
-        maxWidth="sm"
-        fullWidth
+        title="Add New Screen"
       >
-        <DialogTitle>Add New Screen</DialogTitle>
-        <DialogContent>
-          {pairingError && (
-            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPairingError(null)}>
-              {pairingError}
-            </Alert>
-          )}
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Enter the pairing code shown on your display screen
-          </Typography>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Pairing Code"
-            fullWidth
-            value={pairingCode}
-            onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Screen Name"
-            fullWidth
-            value={newScreenName}
-            onChange={(e) => setNewScreenName(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Location (Optional)"
-            fullWidth
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClosePairingDialog}>Cancel</Button>
+        {pairingError && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setPairingError(null)}>
+            {pairingError}
+          </Alert>
+        )}
+        
+        <FormSection
+          title="Pairing Information"
+          description="Enter the pairing code shown on your display screen and provide a name for this screen"
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <FormTextField
+                autoFocus
+                label="Pairing Code"
+                value={pairingCode}
+                onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
+                required
+                helperText="Enter the 6-digit code displayed on your screen"
+                tooltip="This code is used to securely connect your screen to this admin panel"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <QrCodeIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormTextField
+                label="Screen Name"
+                value={newScreenName}
+                onChange={(e) => setNewScreenName(e.target.value)}
+                required
+                helperText="Give this screen a descriptive name"
+                tooltip="A name that helps you identify this screen, e.g., 'Main Prayer Hall'"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <BadgeIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormTextField
+                label="Location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                helperText="Optional: Specify where this screen is located"
+                tooltip="The physical location of this screen, e.g., 'First Floor', 'Entrance Hall'"
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <LocationIcon color="action" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
+          </Grid>
+        </FormSection>
+        
+        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           <Button 
-            onClick={handlePairDevice}
+            variant="outlined" 
+            onClick={handleClosePairingDialog}
+          >
+            Cancel
+          </Button>
+          <Button 
             variant="contained"
+            onClick={handlePairDevice}
             disabled={!pairingCode || !newScreenName}
+            startIcon={deleting ? <CircularProgress size={20} /> : null}
           >
             Pair Device
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </ContentModal>
     </Box>
   );
 } 
