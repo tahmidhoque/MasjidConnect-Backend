@@ -292,14 +292,14 @@ export function VerseHadithForm({ initialData, onSuccess, onCancel }: VerseHadit
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box component="form" onSubmit={handleSubmit}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mx: 3, mt: 3, mb: 0 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
 
         <FormSection 
           title="Content Type" 
-          description="Select the type of religious content you want to add"
+          description="Select the type of content you want to create"
         >
           <Tabs 
             value={tabValue} 
@@ -779,7 +779,7 @@ export function VerseHadithForm({ initialData, onSuccess, onCancel }: VerseHadit
           </Grid>
         </FormSection>
 
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: 1, borderColor: 'divider' }}>
           <Button
             variant="outlined"
             onClick={onCancel}

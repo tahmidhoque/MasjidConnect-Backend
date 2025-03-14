@@ -51,6 +51,7 @@ export function ContentModal({
           borderColor: 'divider',
           py: 2,
           px: 3,
+          mb: 0,
         }}
       >
         <Typography variant="h6" component="div">
@@ -64,7 +65,7 @@ export function ContentModal({
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ pt: 3, px: 3 }}>
+      <DialogContent sx={{ p: 0 }}>
         {children}
       </DialogContent>
     </Dialog>

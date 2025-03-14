@@ -27,12 +27,12 @@ export function FormSection({
 }: FormSectionProps) {
   return (
     <Paper 
-      elevation={1} 
+      elevation={0} 
       sx={{ 
         p: 0, 
-        borderRadius: '12px', 
+        borderRadius: '0',
         overflow: 'hidden', 
-        mb: 3,
+        mb: 0,
         ...sx 
       }}
       className={className}

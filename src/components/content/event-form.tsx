@@ -127,7 +127,7 @@ export function EventForm({ initialData, onSuccess, onCancel }: EventFormProps) 
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Box component="form" onSubmit={handleSubmit}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mx: 3, mt: 3, mb: 0 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
@@ -241,7 +241,7 @@ export function EventForm({ initialData, onSuccess, onCancel }: EventFormProps) 
           </Grid>
         </FormSection>
 
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: 1, borderColor: 'divider' }}>
           <Button
             variant="outlined"
             onClick={onCancel}
