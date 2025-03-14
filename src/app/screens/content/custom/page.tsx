@@ -41,6 +41,9 @@ import {
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import { ContentModal } from '@/components/common/ContentModal';
+import { CustomForm } from '@/components/content/custom-form';
+import { ContentType } from '@prisma/client';
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -460,83 +463,34 @@ export default function CustomContentPage() {
         )}
       </Grid>
 
-      <Dialog
+      <ContentModal
         open={modalOpen}
         onClose={handleCloseModal}
-        maxWidth="md"
-        fullWidth
+        title={editingItem ? 'Edit Custom Content' : 'Add Custom Content'}
       >
-        <DialogTitle>
-          {editingItem ? 'Edit' : 'Add'} Custom Content
-          <IconButton
-            onClick={handleCloseModal}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Title"
-              fullWidth
-              value={formData.title}
-              onChange={(e) => handleInputChange('title', e.target.value)}
-            />
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Content
-              </Typography>
-              <Box sx={{ 
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 1,
-                overflow: 'hidden',
-                '& .ProseMirror': {
-                  minHeight: '200px',
-                  outline: 'none',
-                  p: 2,
-                  '&:focus': {
-                    outline: 'none',
-                  },
-                },
-                '& .ProseMirror p.is-editor-empty:first-of-type::before': {
-                  content: '"Start typing..."',
-                  color: 'text.disabled',
-                  pointerEvents: 'none',
-                  float: 'left',
-                },
-              }}>
-                <MenuBar editor={editor} />
-                <EditorContent editor={editor} />
-              </Box>
-            </Box>
-            <TextField
-              label="Duration (seconds)"
-              type="number"
-              fullWidth
-              value={formData.duration}
-              onChange={(e) => handleInputChange('duration', parseInt(e.target.value) || 30)}
-              InputProps={{ inputProps: { min: 5, max: 300 } }}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.isActive}
-                  onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                />
-              }
-              label="Active"
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModal}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingItem ? 'Save' : 'Add'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <CustomForm
+          initialData={editingItem ? {
+            id: editingItem.id,
+            title: editingItem.title,
+            content: {
+              text: editingItem.content,
+              isHTML: false
+            },
+            type: ContentType.CUSTOM,
+            duration: editingItem.duration,
+            isActive: editingItem.isActive,
+            startDate: undefined,
+            endDate: undefined,
+            createdAt: new Date(editingItem.createdAt),
+            updatedAt: new Date(editingItem.updatedAt)
+          } : undefined}
+          onSuccess={() => {
+            closeModalAndResetState();
+            fetchItems();
+          }}
+          onCancel={handleCloseModal}
+        />
+      </ContentModal>
     </Box>
   );
 } 

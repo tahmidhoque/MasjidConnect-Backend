@@ -30,6 +30,9 @@ import dayjs from 'dayjs';
 import { useSnackbar } from '@/contexts/SnackbarContext';
 import { useDataOperation } from '@/components/common/DataOperationHandler';
 import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/components/common/FormFields';
+import { ContentModal } from '@/components/common/ContentModal';
+import { AnnouncementForm } from '@/components/content/announcement-form';
+import { ContentType } from '@prisma/client';
 
 interface AnnouncementItem {
   id: string;
@@ -59,6 +62,8 @@ export default function AnnouncementPage() {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  
+  const { showSnackbar } = useSnackbar();
 
   // Fetch items function that will be passed to the data operation hook
   const fetchItems = useCallback(async () => {
@@ -310,136 +315,35 @@ export default function AnnouncementPage() {
         />
       </Box>
 
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Dialog 
-          open={modalOpen} 
-          onClose={handleCloseModal} 
-          maxWidth="md" 
-          fullWidth
-          PaperProps={{
-            sx: {
-              m: 2,
-              borderRadius: '12px',
-              maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
-            }
+      <ContentModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        title={editingItem ? 'Edit Announcement' : 'New Announcement'}
+      >
+        <AnnouncementForm
+          initialData={editingItem ? {
+            id: editingItem.id,
+            title: editingItem.title,
+            content: {
+              text: editingItem.content,
+              isUrgent: editingItem.isUrgent
+            },
+            type: ContentType.ANNOUNCEMENT,
+            duration: editingItem.duration,
+            isActive: true,
+            startDate: editingItem.startDate ? new Date(editingItem.startDate) : undefined,
+            endDate: editingItem.endDate ? new Date(editingItem.endDate) : undefined,
+            createdAt: new Date(editingItem.createdAt),
+            updatedAt: new Date(editingItem.updatedAt)
+          } : undefined}
+          onSuccess={() => {
+            handleCloseModal();
+            fetchItems();
+            showSnackbar(editingItem ? 'Announcement updated successfully' : 'Announcement created successfully', 'success');
           }}
-        >
-          <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
-            {editingItem ? 'Edit Announcement' : 'New Announcement'}
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseModal}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: 'text.secondary',
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-          <DialogContent sx={{ pt: 2, pb: 2, px: '32px' }}>
-            {error && (
-              <Box sx={{ mb: 3 }}>
-                <Alert severity="error" onClose={() => setError(null)}>
-                  {error}
-                </Alert>
-              </Box>
-            )}
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <FormTextField
-                  autoFocus
-                  label="Title"
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  helperText="Enter a concise title for your announcement"
-                  tooltip="A brief, descriptive title for your announcement"
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <FormTextArea
-                  label="Content"
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  required
-                  helperText="Enter the main message of your announcement"
-                  tooltip="The detailed message that will be displayed to users"
-                  rows={4}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <FormTextField
-                  label="Display Duration"
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                  endAdornment="seconds"
-                  helperText="How long should this announcement be displayed on each cycle?"
-                  tooltip="Duration in seconds that the announcement will be shown before moving to the next content"
-                  inputProps={{ min: 5, max: 120 }}
-                />
-              </Grid>
-
-              <Grid item xs={12}>
-                <FormSwitch
-                  label="Mark as Urgent"
-                  checked={formData.isUrgent}
-                  onChange={(checked) => setFormData({ ...formData, isUrgent: checked })}
-                  helperText="Urgent announcements are highlighted on the display"
-                  tooltip="Enable this to make the announcement stand out with special styling"
-                  color="error"
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <FormDateTimePicker
-                  label="Start Date/Time"
-                  value={formData.startDate}
-                  onChange={(value) => setFormData({ ...formData, startDate: value })}
-                  helperText="When should this announcement start showing?"
-                  tooltip="If not set, the announcement will be shown immediately"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <FormDateTimePicker
-                  label="End Date/Time"
-                  value={formData.endDate}
-                  onChange={(value) => setFormData({ ...formData, endDate: value })}
-                  helperText="When should this announcement stop showing?"
-                  tooltip="If not set, the announcement will be shown indefinitely"
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ px: '32px', pb: '24px' }}>
-            <Button onClick={handleCloseModal} variant="outlined">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              variant="contained" 
-              color="primary" 
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <CircularProgress size={20} sx={{ mr: 1 }} color="inherit" />
-                  {editingItem ? 'Updating...' : 'Creating...'}
-                </>
-              ) : (
-                editingItem ? 'Update' : 'Create'
-              )}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </LocalizationProvider>
+          onCancel={handleCloseModal}
+        />
+      </ContentModal>
     </Container>
   );
 } 

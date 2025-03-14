@@ -36,8 +36,10 @@ import { useSnackbar } from '@/contexts/SnackbarContext';
 import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/components/common/FormFields';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { ContentForm } from '@/components/content/content-form';
+import { EventForm } from '@/components/content/event-form';
 import { ContentType } from '@prisma/client';
 import { ContentItemData } from '@/lib/services/content';
+import { ContentModal } from '@/components/common/ContentModal';
 
 // Custom status chip component
 interface StatusChipProps {
@@ -308,49 +310,37 @@ export default function EventPage() {
         />
       </Box>
 
-      <Dialog
+      <ContentModal
         open={modalOpen}
         onClose={handleCloseModal}
-        maxWidth="md"
-        fullWidth
+        title={editingItem ? 'Edit Event' : 'Create Event'}
       >
-        <DialogTitle>
-          {editingItem ? 'Edit Event' : 'Create Event'}
-          <IconButton
-            aria-label="close"
-            onClick={handleCloseModal}
-            sx={{
-              position: 'absolute',
-              right: 8,
-              top: 8,
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <ContentForm
-            initialData={editingItem ? {
-              id: editingItem.id,
-              title: editingItem.title,
-              content: editingItem.description,
-              type: ContentType.EVENT,
-              duration: editingItem.duration,
-              isActive: editingItem.isActive,
-              startDate: editingItem.startDate ? new Date(editingItem.startDate) : undefined,
-              endDate: editingItem.endDate ? new Date(editingItem.endDate) : undefined,
-              createdAt: new Date(editingItem.createdAt),
-              updatedAt: new Date(editingItem.updatedAt)
-            } : undefined}
-            onSuccess={() => {
-              handleCloseModal();
-              fetchItems();
-              showSnackbar(editingItem ? 'Event updated successfully' : 'Event created successfully', 'success');
-            }}
-            onCancel={handleCloseModal}
-          />
-        </DialogContent>
-      </Dialog>
+        <EventForm
+          initialData={editingItem ? {
+            id: editingItem.id,
+            title: editingItem.title,
+            content: {
+              description: editingItem.description,
+              location: editingItem.location,
+              eventDate: editingItem.eventDate,
+              isHighlighted: false
+            },
+            type: ContentType.EVENT,
+            duration: editingItem.duration,
+            isActive: editingItem.isActive,
+            startDate: editingItem.startDate ? new Date(editingItem.startDate) : undefined,
+            endDate: editingItem.endDate ? new Date(editingItem.endDate) : undefined,
+            createdAt: new Date(editingItem.createdAt),
+            updatedAt: new Date(editingItem.updatedAt)
+          } : undefined}
+          onSuccess={() => {
+            handleCloseModal();
+            fetchItems();
+            showSnackbar(editingItem ? 'Event updated successfully' : 'Event created successfully', 'success');
+          }}
+          onCancel={handleCloseModal}
+        />
+      </ContentModal>
     </Container>
   );
 } 
