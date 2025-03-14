@@ -7,10 +7,10 @@ import { Prisma } from '@prisma/client';
 // Handler for PUT requests (update existing announcement)
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json({ message: 'Announcement ID is required' }, { status: 400 });
@@ -90,10 +90,10 @@ export async function PUT(
 // Handler for DELETE requests
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json({ message: 'Announcement ID is required' }, { status: 400 });
@@ -152,10 +152,10 @@ export async function DELETE(
 // Handler for GET requests for a specific announcement
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json({ message: 'Announcement ID is required' }, { status: 400 });
