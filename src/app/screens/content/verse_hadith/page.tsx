@@ -34,16 +34,27 @@ import {
   Alert,
   Container,
   Divider,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   Close as CloseIcon,
+  Description as DescriptionIcon,
+  MenuBook as MenuBookIcon,
+  Translate as TranslateIcon,
+  Source as SourceIcon,
+  Bookmark as BookmarkIcon,
+  StarRate as StarRateIcon,
+  Timer as TimerIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
 import { StatusChip } from '@/components/content/table/StatusChip';
 import { formatDuration, getReadableContentType } from '@/lib/content-helper';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 
 interface VerseHadithItem {
   id: string;
@@ -110,6 +121,9 @@ export default function VerseHadithPage() {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  
+  const { showSnackbar } = useSnackbar();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
 
   useEffect(() => {
     fetchItems();
@@ -128,7 +142,7 @@ export default function VerseHadithPage() {
       setTotalPages(data.meta?.totalPages || 0);
     } catch (err) {
       console.error('Error fetching verse/hadith items:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while fetching items', 'error');
     } finally {
       setLoading(false);
     }
@@ -168,6 +182,16 @@ export default function VerseHadithPage() {
   };
 
   const handleCloseModal = () => {
+    if (hasFormChanges()) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to close?')) {
+        closeModalAndResetState();
+      }
+    } else {
+      closeModalAndResetState();
+    }
+  };
+
+  const closeModalAndResetState = () => {
     setModalOpen(false);
     setEditingItem(null);
     setFormData({
@@ -192,6 +216,60 @@ export default function VerseHadithPage() {
     setQuranSearchModalOpen(false);
     setSelectedVerse(null);
     setError(null);
+    setHasUnsavedChanges(false);
+  };
+
+  const hasFormChanges = () => {
+    if (!editingItem) {
+      // For new items, check if any required fields have been filled
+      if (inputMethod === 'manual') {
+        if (formData.translation || formData.reference) {
+          return true;
+        }
+      } else if (inputMethod === 'search') {
+        if (tabValue === 0 && selectedVerse) {
+          return true;
+        } else if (tabValue === 1 && selectedHadith) {
+          return true;
+        }
+      }
+      return false;
+    }
+    
+    // For editing existing items
+    if (editingItem.content.type !== formData.contentType) {
+      return true;
+    }
+    
+    if (editingItem.title !== formData.title) {
+      return true;
+    }
+    
+    if (editingItem.content.arabicText !== formData.arabicText) {
+      return true;
+    }
+    
+    if (editingItem.content.translation !== formData.translation) {
+      return true;
+    }
+    
+    if (editingItem.content.reference !== formData.reference) {
+      return true;
+    }
+    
+    if (editingItem.content.source !== formData.source) {
+      return true;
+    }
+    
+    if (editingItem.content.grade !== formData.grade) {
+      return true;
+    }
+    
+    if (editingItem.duration.toString() !== formData.duration) {
+      return true;
+    }
+    
+    return false;
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -201,16 +279,18 @@ export default function VerseHadithPage() {
       contentType: newValue === 0 ? 'QURAN_VERSE' : 'HADITH',
     });
     setPreview(null);
+    setHasUnsavedChanges(true);
   };
 
   const handleInputMethodChange = (method: 'random' | 'manual' | 'search') => {
     setInputMethod(method);
     setPreview(null);
+    setHasUnsavedChanges(true);
   };
 
   const handleSearchQuranVerse = async () => {
     if (!surahNumber || !ayahNumber) {
-      setError("Surah and Ayah numbers are required for search");
+      showSnackbar("Surah and Ayah numbers are required for search", 'error');
       return;
     }
     
@@ -270,7 +350,7 @@ export default function VerseHadithPage() {
       setQuranSearchModalOpen(true);
     } catch (err) {
       console.error("Error searching Quran verse:", err);
-      setError(err instanceof Error ? err.message : 'An error occurred while searching for verses');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while searching for verses', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -313,9 +393,10 @@ export default function VerseHadithPage() {
       setSelectedVerse({ surah, ayah, surahName });
       setSurahNumber(surah.toString());
       setAyahNumber(ayah.toString());
+      setHasUnsavedChanges(true);
     } catch (err) {
       console.error("Error fetching verse:", err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while fetching verse', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -329,6 +410,17 @@ export default function VerseHadithPage() {
       const contentType = tabValue === 0 ? 'QURAN_VERSE' : 'HADITH';
       
       if (inputMethod === 'manual') {
+        // Validate required fields for manual input
+        if (contentType === 'QURAN_VERSE') {
+          if (!formData.translation || !formData.reference) {
+            throw new Error('Translation and reference are required for Quran verses');
+          }
+        } else {
+          if (!formData.translation || !formData.reference) {
+            throw new Error('Translation and reference are required for Hadiths');
+          }
+        }
+        
         setPreview({
           type: contentType,
           arabicText: formData.arabicText,
@@ -364,7 +456,7 @@ export default function VerseHadithPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while generating preview', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -434,10 +526,12 @@ export default function VerseHadithPage() {
 
       if (!response.ok) throw new Error('Failed to save item');
       
+      showSnackbar(`${contentType === 'QURAN_VERSE' ? 'Verse' : 'Hadith'} ${editingItem ? 'updated' : 'created'} successfully`, 'success');
       await fetchItems();
       handleCloseModal();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error saving item:', err);
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while saving', 'error');
     } finally {
       setIsSaving(false);
       setIsLoading(false);
@@ -459,11 +553,12 @@ export default function VerseHadithPage() {
         throw new Error('Failed to delete item');
       }
       
+      showSnackbar('Item deleted successfully', 'success');
       // Refresh the items list
       fetchItems();
     } catch (err) {
       console.error('Error deleting item:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while deleting', 'error');
     } finally {
       setLoading(false);
     }
@@ -471,7 +566,7 @@ export default function VerseHadithPage() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      setError("Please enter search keywords");
+      showSnackbar("Please enter search keywords", 'error');
       return;
     }
     
@@ -541,11 +636,11 @@ export default function VerseHadithPage() {
         setSearchModalOpen(true);
       } else {
         console.log("No results found");
-        setError('No hadith results found. Try different keywords.');
+        showSnackbar('No hadith results found. Try different keywords.', 'info');
       }
     } catch (err) {
       console.error("Search error:", err);
-      setError(err instanceof Error ? err.message : 'An error occurred during hadith search');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred during hadith search', 'error');
     } finally {
       setIsSearching(false);
       setSearchResultsLoading(false);
@@ -562,7 +657,7 @@ export default function VerseHadithPage() {
 
   const handleSelectHadith = async (hadithNumber: number | null) => {
     if (hadithNumber === null) {
-      setError("Cannot select hadith with unknown number");
+      showSnackbar("Cannot select hadith with unknown number", 'error');
       return;
     }
     
@@ -633,9 +728,10 @@ export default function VerseHadithPage() {
       console.log("Hadith data:", hadithData);
       setPreview(hadithData);
       setSelectedHadith(hadithNumber);
+      setHasUnsavedChanges(true);
     } catch (err) {
       console.error("Error fetching hadith:", err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      showSnackbar(err instanceof Error ? err.message : 'An error occurred while fetching hadith', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -733,8 +829,15 @@ export default function VerseHadithPage() {
         onClose={handleCloseModal}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            m: 2,
+            borderRadius: '12px',
+            maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
           {editingItem ? 'Edit Verse/Hadith' : 'Add New Verse/Hadith'}
           <IconButton
             aria-label="close"
@@ -743,17 +846,14 @@ export default function VerseHadithPage() {
               position: 'absolute',
               right: 8,
               top: 8,
+              color: 'text.secondary',
             }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+        <DialogContent sx={{ pt: 2, pb: 2, px: '32px', paddingTop: '20px !important' }}>
+          {/* Error alerts removed as we're now using snackbars */}
           
           <Tabs 
             value={tabValue} 
@@ -810,10 +910,21 @@ export default function VerseHadithPage() {
             <TextField
               label="Title"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, title: e.target.value });
+                setHasUnsavedChanges(true);
+              }}
               fullWidth
               placeholder="Leave blank to use reference as title"
               sx={{ mb: 3 }}
+              helperText="Optional: Custom title for this content (reference will be used if left blank)"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <BookmarkIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
           )}
 
@@ -848,6 +959,7 @@ export default function VerseHadithPage() {
             </Stack>
           )}
 
+          {/* Manual Input sections with improved styling */}
           {inputMethod === 'manual' && (
             <Stack spacing={3}>
               {tabValue === 0 && (
@@ -855,37 +967,79 @@ export default function VerseHadithPage() {
                   <TextField
                     label="Arabic Text"
                     value={formData.arabicText}
-                    onChange={(e) => setFormData({ ...formData, arabicText: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, arabicText: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     required
                     multiline
                     rows={3}
                     sx={{ direction: 'rtl' }}
                     inputProps={{ style: { fontSize: '1.5rem', fontFamily: 'Scheherazade New, serif' } }}
+                    helperText="Enter the Quranic verse in Arabic"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                          <MenuBookIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Translation"
                     value={formData.translation}
-                    onChange={(e) => setFormData({ ...formData, translation: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, translation: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     required
                     multiline
                     rows={4}
+                    helperText="Enter the English translation of the verse"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                          <TranslateIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Reference"
                     value={formData.reference}
-                    onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, reference: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     required
-                    helperText="e.g., 'Al-Baqarah (2:255)'"
+                    helperText="Citation format: 'Surah Name (Chapter:Verse)' e.g., 'Al-Baqarah (2:255)'"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <DescriptionIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Source (Optional)"
                     value={formData.source}
-                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, source: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
-                    helperText="e.g., 'Sahih International'"
+                    helperText="Translation source e.g., 'Sahih International', 'Yusuf Ali'"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SourceIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </>
               )}
@@ -895,36 +1049,78 @@ export default function VerseHadithPage() {
                   <TextField
                     label="Arabic Text (Optional)"
                     value={formData.arabicText}
-                    onChange={(e) => setFormData({ ...formData, arabicText: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, arabicText: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     multiline
                     rows={3}
                     sx={{ direction: 'rtl' }}
                     inputProps={{ style: { fontSize: '1.5rem', fontFamily: 'Scheherazade New, serif' } }}
+                    helperText="Optional: Original Arabic text of the hadith"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                          <MenuBookIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Translation"
                     value={formData.translation}
-                    onChange={(e) => setFormData({ ...formData, translation: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, translation: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     required
                     multiline
                     rows={4}
+                    helperText="English translation of the hadith"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                          <TranslateIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Reference"
                     value={formData.reference}
-                    onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, reference: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
                     required
-                    helperText="e.g., 'Sahih Bukhari, Book 1, Hadith 1'"
+                    helperText="Citation format: 'Collection, Book Number, Hadith Number' e.g., 'Sahih Bukhari, Book 1, Hadith 1'"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <DescriptionIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                   <TextField
                     label="Grade (Optional)"
                     value={formData.grade}
-                    onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, grade: e.target.value });
+                      setHasUnsavedChanges(true);
+                    }}
                     fullWidth
-                    helperText="e.g., 'Sahih', 'Hasan', etc."
+                    helperText="Authentication status of the hadith e.g., 'Sahih', 'Hasan', 'Daif'"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <StarRateIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </>
               )}
@@ -935,10 +1131,10 @@ export default function VerseHadithPage() {
             <Stack spacing={3}>
               {tabValue === 0 && (
                 <>
-                  <Alert severity="info" sx={{ mb: 2 }}>
+                  <Alert severity="info" sx={{ mb: 2, borderRadius: '8px' }}>
                     To search for a specific Quran verse, enter the Surah and Ayah numbers below.
                   </Alert>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
                     <TextField
                       label="Surah Number"
                       value={surahNumber}
@@ -948,6 +1144,7 @@ export default function VerseHadithPage() {
                       InputLabelProps={{ shrink: true }}
                       inputProps={{ min: 1, max: 114 }}
                       sx={{ width: '120px' }}
+                      helperText="1-114"
                     />
                     <TextField
                       label="Ayah Number"
@@ -958,18 +1155,21 @@ export default function VerseHadithPage() {
                       InputLabelProps={{ shrink: true }}
                       inputProps={{ min: 1 }}
                       sx={{ width: '120px' }}
+                      helperText="Verse number"
                     />
                     <Button 
                       variant="contained"
                       onClick={handleSearchQuranVerse}
                       disabled={!surahNumber || !ayahNumber || isLoading}
+                      sx={{ height: '40px', alignSelf: 'flex-start', mt: '8px', borderRadius: '8px' }}
+                      startIcon={isLoading ? <CircularProgress size={20} /> : <SearchIcon />}
                     >
-                      {isLoading ? <CircularProgress size={24} /> : 'Search'}
+                      {isLoading ? 'Searching...' : 'Search'}
                     </Button>
                   </Box>
                   
                   {selectedVerse && (
-                    <Paper elevation={2} sx={{ p: 2, mt: 2, bgcolor: 'action.selected' }}>
+                    <Paper elevation={2} sx={{ p: 2, mt: 2, bgcolor: 'action.selected', borderRadius: '8px' }}>
                       <Typography variant="subtitle2" color="primary" gutterBottom>
                         Selected: Surah {selectedVerse.surah}, Ayah {selectedVerse.ayah}
                         {selectedVerse.surahName && ` (${selectedVerse.surahName})`}
@@ -979,6 +1179,7 @@ export default function VerseHadithPage() {
                           size="small" 
                           variant="outlined" 
                           onClick={() => setSelectedVerse(null)}
+                          sx={{ borderRadius: '8px' }}
                         >
                           Clear Selection
                         </Button>
@@ -987,6 +1188,7 @@ export default function VerseHadithPage() {
                           variant="contained" 
                           onClick={handlePreview}
                           disabled={isLoading}
+                          sx={{ borderRadius: '8px' }}
                         >
                           {isLoading ? <CircularProgress size={20} /> : 'View Selected Verse'}
                         </Button>
@@ -1005,6 +1207,7 @@ export default function VerseHadithPage() {
                       value={hadithCollection}
                       label="Hadith Collection"
                       onChange={(e) => setHadithCollection(e.target.value)}
+                      sx={{ borderRadius: '8px' }}
                     >
                       <MenuItem value="bukhari">Sahih Bukhari</MenuItem>
                       <MenuItem value="muslim">Sahih Muslim</MenuItem>
@@ -1016,7 +1219,7 @@ export default function VerseHadithPage() {
                     </Select>
                   </FormControl>
 
-                  <Box sx={{ display: 'flex', alignItems: 'stretch', mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
                     <TextField
                       label="Search by keywords"
                       value={searchQuery}
@@ -1029,19 +1232,28 @@ export default function VerseHadithPage() {
                         }
                       }}
                       sx={{ flexGrow: 1, mr: 2 }}
+                      helperText="Enter words or phrases to find relevant hadiths"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon color="action" />
+                          </InputAdornment>
+                        ),
+                      }}
                     />
                     <Button
                       variant="contained"
                       onClick={handleSearch}
                       disabled={isSearching || !searchQuery.trim()}
-                      sx={{ minWidth: '100px' }}
+                      sx={{ minWidth: '100px', height: '40px', mt: '8px', borderRadius: '8px' }}
+                      startIcon={isSearching ? <CircularProgress size={20} /> : null}
                     >
-                      {isSearching ? <CircularProgress size={24} /> : 'Search'}
+                      {isSearching ? 'Searching...' : 'Search'}
                     </Button>
                   </Box>
 
                   {selectedHadith && (
-                    <Paper elevation={2} sx={{ p: 2, mt: 2, bgcolor: 'action.selected' }}>
+                    <Paper elevation={2} sx={{ p: 2, mt: 2, bgcolor: 'action.selected', borderRadius: '8px' }}>
                       <Typography variant="subtitle2" color="primary" gutterBottom>
                         Selected: Hadith #{selectedHadith} from {hadithCollection === 'bukhari' ? 'Sahih Bukhari' : 
                                         hadithCollection === 'muslim' ? 'Sahih Muslim' : 
@@ -1057,6 +1269,7 @@ export default function VerseHadithPage() {
                           size="small" 
                           variant="outlined" 
                           onClick={() => setSelectedHadith(null)}
+                          sx={{ borderRadius: '8px' }}
                         >
                           Clear Selection
                         </Button>
@@ -1065,6 +1278,7 @@ export default function VerseHadithPage() {
                           variant="contained" 
                           onClick={handlePreview}
                           disabled={isLoading}
+                          sx={{ borderRadius: '8px' }}
                         >
                           {isLoading ? <CircularProgress size={20} /> : 'View Selected Hadith'}
                         </Button>
@@ -1080,11 +1294,22 @@ export default function VerseHadithPage() {
             label="Display Duration (seconds)"
             type="number"
             value={formData.duration}
-            onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, duration: e.target.value });
+              setHasUnsavedChanges(true);
+            }}
             fullWidth
             required
             inputProps={{ min: 5, max: 120 }}
             sx={{ mt: 3 }}
+            helperText="How long this content should display on screens (in seconds)"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <TimerIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
           />
 
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
@@ -1092,13 +1317,15 @@ export default function VerseHadithPage() {
               variant="outlined"
               onClick={handlePreview}
               disabled={isLoading}
+              sx={{ borderRadius: '8px', height: '40px' }}
+              startIcon={isLoading ? <CircularProgress size={20} /> : null}
             >
-              {isLoading ? <CircularProgress size={24} /> : 'Preview Content'}
+              {isLoading ? 'Loading...' : 'Preview Content'}
             </Button>
           </Box>
 
           {preview && (
-            <Paper elevation={2} sx={{ p: 3, mt: 3, bgcolor: 'background.default' }}>
+            <Paper elevation={2} sx={{ p: 3, mt: 3, bgcolor: 'background.default', borderRadius: '8px' }}>
               <Typography variant="h6" gutterBottom>
                 Preview
               </Typography>
@@ -1134,11 +1361,14 @@ export default function VerseHadithPage() {
             </Paper>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModal}>Cancel</Button>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Button onClick={handleCloseModal} color="inherit">
+            Cancel
+          </Button>
           <Button 
             onClick={handleSubmit} 
-            variant="contained"
+            variant="contained" 
+            color="primary"
             disabled={isLoading || isSaving}
           >
             {isSaving ? <CircularProgress size={24} /> : 'Save'}
@@ -1151,8 +1381,15 @@ export default function VerseHadithPage() {
         onClose={handleCloseSearchModal}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            m: 2,
+            borderRadius: '12px',
+            maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
           Search Results
           <IconButton
             aria-label="close"
@@ -1161,17 +1398,14 @@ export default function VerseHadithPage() {
               position: 'absolute',
               right: 8,
               top: 8,
+              color: 'text.secondary',
             }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          {error && searchModalOpen && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+        <DialogContent sx={{ pt: 2, pb: 2, px: '32px', paddingTop: '20px !important' }}>
+          {/* Error alerts removed as we're now using snackbars */}
           
           {searchResultsLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -1206,7 +1440,7 @@ export default function VerseHadithPage() {
                       mb: 2, 
                       p: 2,
                       bgcolor: 'background.paper',
-                      borderRadius: 1,
+                      borderRadius: '8px',
                       borderLeft: result.number === selectedHadith ? '4px solid' : 'none',
                       borderColor: 'primary.main',
                       '&:hover': {
@@ -1218,9 +1452,7 @@ export default function VerseHadithPage() {
                       Hadith {result.number}
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 1 }}>
-                      {result.text.length > 300 
-                        ? `${result.text.substring(0, 300)}...` 
-                        : result.text}
+                      {result.text}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {result.reference}
@@ -1230,6 +1462,7 @@ export default function VerseHadithPage() {
                         size="small" 
                         variant="contained"
                         onClick={() => handleSelectHadith(result.number)}
+                        sx={{ borderRadius: '8px' }}
                       >
                         Select
                       </Button>
@@ -1240,8 +1473,10 @@ export default function VerseHadithPage() {
             </>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSearchModal}>Cancel</Button>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Button onClick={handleCloseSearchModal} color="inherit">
+            Cancel
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1250,8 +1485,15 @@ export default function VerseHadithPage() {
         onClose={handleCloseQuranSearchModal}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            m: 2,
+            borderRadius: '12px',
+            maxWidth: { xs: 'calc(100% - 32px)', sm: '700px' }
+          }
+        }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ fontSize: '1.25rem', fontWeight: 'medium', pb: 1, px: '32px', pt: '24px' }}>
           Quran Verse Search Results
           <IconButton
             aria-label="close"
@@ -1260,17 +1502,14 @@ export default function VerseHadithPage() {
               position: 'absolute',
               right: 8,
               top: 8,
+              color: 'text.secondary',
             }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          {error && quranSearchModalOpen && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+        <DialogContent sx={{ pt: 2, pb: 2, px: '32px', paddingTop: '20px !important' }}>
+          {/* Error alerts removed as we're now using snackbars */}
           
           {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -1278,54 +1517,79 @@ export default function VerseHadithPage() {
             </Box>
           ) : (
             <>
-              <Box sx={{ mb: 3, pb: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
-                <Typography variant="h6" gutterBottom>
-                  Surah {surahNumber}, Ayah {ayahNumber} and surrounding verses
+              {quranSearchResults.length === 0 ? (
+                <Typography variant="body1" sx={{ p: 2, textAlign: 'center' }}>
+                  No results found for the specified criteria.
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Select a verse to use it in your content
-                </Typography>
-              </Box>
-              <List sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-                {quranSearchResults.map((result, index) => (
-                  <Paper 
-                    key={`quran-result-${index}`}
-                    elevation={2} 
-                    sx={{ 
-                      mb: 2, 
-                      p: 2,
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      borderLeft: result.isTarget ? '4px solid' : 'none',
-                      borderColor: 'primary.main',
-                      '&:hover': {
-                        bgcolor: 'action.hover',
-                      }
-                    }}
-                  >
-                    <Typography variant="h6" gutterBottom>
-                      {result.text.length > 300 ? `${result.text.substring(0, 300)}...` : result.text}
+              ) : (
+                <>
+                  <Box sx={{ mb: 3, pb: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                    <Typography variant="subtitle1">
+                      Found {quranSearchResults.length} verses
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {result.reference}
+                      Click on a verse to select it
                     </Typography>
-                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                      <Button 
-                        size="small" 
-                        variant="contained"
-                        onClick={() => handleSelectVerse(result.surah, result.ayah, result.surahName)}
+                  </Box>
+                  <List sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+                    {quranSearchResults.map((verse, index) => (
+                      <Paper 
+                        key={`verse-result-${index}`}
+                        elevation={2} 
+                        sx={{ 
+                          mb: 2, 
+                          p: 2,
+                          bgcolor: 'background.paper',
+                          borderRadius: '8px',
+                          borderLeft: verse.isTarget ? '4px solid' : 'none',
+                          borderColor: 'primary.main',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            cursor: 'pointer'
+                          }
+                        }}
                       >
-                        Select
-                      </Button>
-                    </Box>
-                  </Paper>
-                ))}
-              </List>
+                        <Typography variant="subtitle1" gutterBottom color="primary">
+                          {verse.surahName} ({verse.surah}:{verse.ayah})
+                        </Typography>
+                        {verse.arabicText && (
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              mb: 1.5, 
+                              fontFamily: 'Scheherazade New, serif',
+                              direction: 'rtl', 
+                              textAlign: 'right' 
+                            }}
+                          >
+                            {verse.arabicText}
+                          </Typography>
+                        )}
+                        <Typography variant="body1" sx={{ mb: 1 }}>
+                          {verse.text}
+                        </Typography>
+                        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button 
+                            size="small" 
+                            variant="contained"
+                            onClick={() => handleSelectVerse(verse.surah, verse.ayah, verse.surahName)}
+                            sx={{ borderRadius: '8px' }}
+                          >
+                            Select
+                          </Button>
+                        </Box>
+                      </Paper>
+                    ))}
+                  </List>
+                </>
+              )}
             </>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseQuranSearchModal}>Cancel</Button>
+        <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+          <Button onClick={handleCloseQuranSearchModal} color="inherit">
+            Cancel
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>

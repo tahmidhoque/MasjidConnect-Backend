@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       data: {
         title: data.title,
         content: content as unknown as Prisma.JsonObject,
-        duration: data.duration || 15, // default duration in seconds
+        duration: typeof data.duration === 'string' ? parseInt(data.duration, 10) : (data.duration || 15), // ensure duration is an integer
         isActive: data.isActive !== undefined ? data.isActive : true,
         startDate: data.startDate ? new Date(data.startDate) : null,
         endDate: data.endDate ? new Date(data.endDate) : null,
@@ -203,7 +203,7 @@ export async function PUT(request: Request) {
       data: {
         title: data.title,
         content: content as unknown as Prisma.JsonObject,
-        duration: data.duration || existingEvent.duration,
+        duration: typeof data.duration === 'string' ? parseInt(data.duration, 10) : (data.duration || existingEvent.duration),
         isActive: data.isActive !== undefined ? data.isActive : existingEvent.isActive,
         startDate: data.startDate ? new Date(data.startDate) : existingEvent.startDate,
         endDate: data.endDate ? new Date(data.endDate) : existingEvent.endDate,

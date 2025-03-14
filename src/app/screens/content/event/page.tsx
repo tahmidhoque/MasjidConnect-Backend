@@ -24,6 +24,8 @@ import {
   LocationOn as LocationIcon,
   Event as EventIcon,
   Description as DescriptionIcon,
+  AccessTime as AccessTimeIcon,
+  DateRange as DateRangeIcon,
 } from '@mui/icons-material';
 import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
 import { formatDate } from '@/lib/content-helper';
@@ -279,7 +281,7 @@ export default function EventPage() {
       label: 'Title',
       render: (item: EventItem) => (
         <Tooltip title={item.title} placement="top">
-          <Typography variant="body2" noWrap>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 'medium' }}>
             {item.title}
           </Typography>
         </Tooltip>
@@ -290,8 +292,8 @@ export default function EventPage() {
       label: 'Description',
       render: (item: EventItem) => (
         <Tooltip title={item.description} placement="top">
-          <Typography variant="body2" noWrap>
-            {item.description}
+          <Typography variant="body2" noWrap sx={{ maxWidth: 250 }}>
+            {item.description || 'No description provided'}
           </Typography>
         </Tooltip>
       )
@@ -300,21 +302,71 @@ export default function EventPage() {
       id: 'location',
       label: 'Location',
       render: (item: EventItem) => (
+        <Tooltip title={item.location} placement="top">
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <LocationIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="body2" noWrap>
+              {item.location || 'No location specified'}
+            </Typography>
+          </Box>
+        </Tooltip>
+      ),
+      filterable: true,
+      filterOptions: [
+        { value: 'all', label: 'All Locations' },
+        { value: 'Online', label: 'Online' },
+        { value: 'Main Hall', label: 'Main Hall' },
+        { value: 'Meeting Room', label: 'Meeting Room' },
+        { value: 'Prayer Hall', label: 'Prayer Hall' },
+        { value: 'Community Center', label: 'Community Center' }
+      ]
+    },
+    {
+      id: 'eventDate',
+      label: 'Event Date',
+      render: (item: EventItem) => (
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <LocationIcon fontSize="small" sx={{ mr: 1 }} />
-          <Typography variant="body2" noWrap>
-            {item.location}
+          <EventIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+          <Typography variant="body2">
+            {item.eventDate ? formatDate(item.eventDate) : 'N/A'}
           </Typography>
         </Box>
       )
     },
     {
-      id: 'eventDate',
-      label: 'Date',
+      id: 'duration',
+      label: 'Display Duration',
       render: (item: EventItem) => (
-        <Typography variant="body2">
-          {item.eventDate ? formatDate(item.eventDate) : 'N/A'}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <AccessTimeIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+          <Typography variant="body2">
+            {item.duration || 15} seconds
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'dateRange',
+      label: 'Display Period',
+      render: (item: EventItem) => (
+        <Tooltip 
+          title={
+            item.startDate && item.endDate ? 
+            `From ${formatDate(item.startDate)} to ${formatDate(item.endDate)}` : 
+            'No specific display period set'
+          } 
+          placement="top"
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <DateRangeIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+            <Typography variant="body2" noWrap>
+              {item.startDate && item.endDate ? 
+                `${formatDate(item.startDate)} - ${formatDate(item.endDate)}` : 
+                <Typography component="span" color="text.secondary" sx={{ fontStyle: 'italic' }}>Always visible</Typography>
+              }
+            </Typography>
+          </Box>
+        </Tooltip>
       )
     },
     {
@@ -348,15 +400,6 @@ export default function EventPage() {
         { value: 'Yes', label: 'Yes' },
         { value: 'No', label: 'No' }
       ]
-    },
-    {
-      id: 'createdAt',
-      label: 'Created',
-      render: (item: EventItem) => (
-        <Typography variant="body2">
-          {formatDate(item.createdAt)}
-        </Typography>
-      )
     }
   ];
 
