@@ -3,14 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -27,7 +26,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const item = await prisma.contentItem.findFirst({
       where: {
-        id: params.id,
+        id,
         masjidId: user.masjidId,
         type: 'VERSE_HADITH',
       },
@@ -44,8 +43,13 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function PUT(request: Request, { params }: RouteParams) {
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -63,7 +67,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     // Check if the item exists and belongs to the user's masjid
     const existingItem = await prisma.contentItem.findFirst({
       where: {
-        id: params.id,
+        id,
         masjidId: user.masjidId,
         type: 'VERSE_HADITH',
       },
@@ -82,7 +86,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     
     const updatedItem = await prisma.contentItem.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         title: title,
@@ -99,8 +103,13 @@ export async function PUT(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -118,7 +127,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     // Check if the item exists and belongs to the user's masjid
     const existingItem = await prisma.contentItem.findFirst({
       where: {
-        id: params.id,
+        id,
         masjidId: user.masjidId,
         type: 'VERSE_HADITH',
       },
@@ -131,7 +140,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     // Delete the item
     await prisma.contentItem.delete({
       where: {
-        id: params.id,
+        id,
       },
     });
 

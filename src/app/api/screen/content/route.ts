@@ -3,8 +3,13 @@ import { prisma } from '@/lib/prisma';
 import { applyCorsHeaders, handleCorsOptions } from '@/lib/cors';
 import type { NextRequest } from 'next/server';
 
-export async function OPTIONS(req: NextRequest) {
-  return handleCorsOptions(req);
+export async function OPTIONS(req: NextRequest): Promise<Response> {
+  // Always return a Response object, not null
+  const corsResponse = handleCorsOptions(req);
+  if (corsResponse) return corsResponse;
+  
+  // If handleCorsOptions returns null, create a default response
+  return new NextResponse(null, { status: 204 });
 }
 
 export async function GET(req: NextRequest) {
