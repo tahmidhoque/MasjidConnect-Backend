@@ -1,0 +1,249 @@
+# Masjid Admin UI/UX Design Guidelines
+
+This document outlines the UI/UX design principles and patterns to be followed throughout the Masjid Admin application to ensure a consistent, accessible, and user-friendly experience.
+
+## 1. Layout Structure
+
+### Page Layout
+- Use `Container` component with `maxWidth="lg"` or `maxWidth="xl"` for consistent page width
+- Apply vertical padding with `sx={{ py: 4 }}` to maintain consistent spacing
+- Include breadcrumbs at the top of content pages for navigation context
+- Use a consistent header structure with:
+  - Page title (Typography variant="h4")
+  - Optional subtitle (Typography variant="subtitle1" color="text.secondary")
+  - Divider below the header section
+
+### Section Layout
+- Use the `FormSection` component for grouping related form elements
+- Include a descriptive title and helpful description for each section
+- Maintain consistent spacing between sections (mb: 4)
+
+## 2. Form Design
+
+### Form Components
+- Use the custom form components from `@/components/common/FormFields`:
+  - `FormTextField` for text inputs
+  - `FormTextArea` for multiline text inputs
+  - `FormDatePicker` for date selection
+  - `FormSwitch` for toggle inputs
+- Include helpful tooltips and descriptive helper text for form fields
+- Use consistent input adornments (icons) to visually categorize input types
+- Group related form fields using Grid with appropriate spacing (spacing={3})
+
+### Form Sections
+- Organize forms into logical sections using the `FormSection` component
+- Each section should have a clear title and description
+- Maintain consistent spacing between form fields (Grid spacing={3})
+
+### Form Actions
+- Place form action buttons at the bottom of the form
+- Align buttons to the right (justifyContent: 'flex-end')
+- Use consistent button styling:
+  - Primary action: variant="contained"
+  - Secondary action: variant="outlined"
+  - Maintain consistent spacing between buttons (gap: 2)
+
+## 3. Modal Design
+
+### Modal Structure
+- Use the `ContentModal` component for all content-related modals
+- Provide a clear, descriptive title
+- Maintain consistent padding and spacing within modals
+- Use consistent modal width and max-width settings
+
+### Modal Content
+- Organize modal content using the same form design principles
+- Use the appropriate form component based on content type
+- Include clear section headings and descriptions
+
+## 4. Component Design
+
+### Content Type Forms
+- Create dedicated form components for each content type:
+  - `EventForm` for events
+  - `AnnouncementForm` for announcements
+  - `CustomForm` for custom content
+  - `VerseHadithForm` for verses and hadiths
+- Maintain consistent structure and styling across all form components
+- Include appropriate validation and error handling
+
+### Tables and Lists
+- Use the `ContentTypeTable` component for displaying content items
+- Include consistent column definitions and styling
+- Provide clear empty states and loading indicators
+- Use consistent action buttons for edit, delete, etc.
+
+## 5. Typography
+
+### Text Hierarchy
+- Page titles: Typography variant="h4" component="h1"
+- Section titles: Typography variant="h6" component="h2"
+- Form field labels: Use MUI default styling
+- Helper text: Typography variant="caption" color="text.secondary"
+- Body text: Typography variant="body1" or variant="body2"
+
+### Arabic Text
+- Use appropriate font family: 'Scheherazade New, serif'
+- Set text direction to RTL: direction: 'rtl'
+- Use appropriate font size for Arabic text (fontSize: '1.5rem')
+
+## 6. Color Usage
+
+### Color Palette
+- Primary color: Used for primary actions, active states, and emphasis
+- Secondary color: Used for secondary actions and less prominent elements
+- Error color: Used for error messages and destructive actions
+- Warning color: Used for warning messages and cautionary actions
+- Info color: Used for informational messages
+- Success color: Used for success messages and confirmations
+
+### Status Indicators
+- Use the `StatusChip` component for displaying active/inactive status
+- Use consistent color coding for status indicators
+
+## 7. Spacing and Sizing
+
+### Spacing
+- Use MUI's spacing system consistently (1 unit = 8px)
+- Maintain consistent spacing between sections (mb: 4)
+- Use consistent spacing between form fields (Grid spacing={3})
+- Use consistent padding within containers and cards (p: 3)
+
+### Component Sizing
+- Use consistent button sizes
+- Use consistent input field heights
+- Use consistent modal widths and max-widths
+
+## 8. Responsive Design
+
+### Breakpoints
+- Use MUI's responsive breakpoints (xs, sm, md, lg, xl)
+- Adjust layouts appropriately for different screen sizes
+- Use Grid with responsive column widths:
+  - Full width on mobile: xs={12}
+  - Half width on tablets and above: md={6}
+
+### Mobile Considerations
+- Ensure all forms and tables are usable on mobile devices
+- Use responsive padding and margins
+- Stack elements vertically on smaller screens
+
+## 9. Feedback and Interactions
+
+### Loading States
+- Use the CircularProgress component for loading indicators
+- Disable buttons during loading states
+- Show loading indicators in appropriate locations
+
+### Error Handling
+- Display error messages using the Alert component
+- Provide clear error messages with actionable information
+- Allow users to dismiss error messages
+
+### Success Feedback
+- Use the Snackbar component for success messages
+- Provide clear success messages after actions are completed
+
+## 10. Accessibility
+
+### Focus Management
+- Ensure proper focus management for keyboard navigation
+- Use appropriate tab order for form fields
+- Ensure focus is visible for keyboard users
+
+### Color Contrast
+- Ensure sufficient color contrast for text and interactive elements
+- Use MUI's color system which is designed with accessibility in mind
+
+### Screen Reader Support
+- Use appropriate ARIA attributes for custom components
+- Ensure all interactive elements have accessible names
+- Provide appropriate alt text for images
+
+## 11. Content Creation Flow
+
+### Create Pages
+- Use consistent layout for all content creation pages:
+  - Breadcrumbs for navigation context
+  - Clear page title
+  - Back button for easy navigation
+  - Divider to separate header from content
+  - Appropriate form component for the content type
+
+### Edit Flow
+- Use consistent modal design for editing existing content
+- Pre-populate form fields with existing content data
+- Provide clear success/error feedback after editing
+
+## 12. Unsaved Changes Handling
+
+- Use the UnsavedChanges context to track form modifications
+- Prompt users before navigating away from forms with unsaved changes
+- Clear unsaved changes state after successful form submission
+
+## Implementation Examples
+
+### Page Layout Example
+```tsx
+<Container maxWidth="lg" sx={{ py: 4 }}>
+  <Box sx={{ mb: 4 }}>
+    <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
+      {/* Breadcrumb items */}
+    </Breadcrumbs>
+    
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Typography variant="h4" component="h1">
+        Page Title
+      </Typography>
+      <Button variant="outlined">
+        Action Button
+      </Button>
+    </Box>
+    <Divider sx={{ mb: 4 }} />
+  </Box>
+
+  {/* Page content */}
+</Container>
+```
+
+### Form Section Example
+```tsx
+<FormSection 
+  title="Section Title" 
+  description="Helpful description of this section"
+>
+  <Grid container spacing={3}>
+    <Grid item xs={12}>
+      <FormTextField
+        label="Field Label"
+        value={value}
+        onChange={handleChange}
+        helperText="Helpful description of this field"
+        tooltip="More detailed information about this field"
+      />
+    </Grid>
+    {/* More form fields */}
+  </Grid>
+</FormSection>
+```
+
+### Form Actions Example
+```tsx
+<Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+  <Button
+    variant="outlined"
+    onClick={handleCancel}
+    disabled={isLoading}
+  >
+    Cancel
+  </Button>
+  <Button
+    type="submit"
+    variant="contained"
+    disabled={isLoading}
+    startIcon={isLoading ? <CircularProgress size={20} /> : null}
+  >
+    {isLoading ? 'Saving...' : 'Save'}
+  </Button>
+</Box>
+``` 
