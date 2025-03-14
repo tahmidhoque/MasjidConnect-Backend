@@ -6,6 +6,7 @@ import { SessionProvider } from 'next-auth/react';
 import theme from '@/lib/theme';
 import { UserProvider } from '@/contexts/UserContext';
 import { UnsavedChangesProvider } from '@/contexts/UnsavedChangesContext';
+import { SnackbarProvider } from '@/contexts/SnackbarContext';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -14,9 +15,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CssBaseline />
         <UserProvider>
           <UnsavedChangesProvider>
-            {/* <div suppressHydrationWarning> */}
-              {children}
-            {/* </div> */}
+            <SnackbarProvider>
+              {/* <div suppressHydrationWarning> */}
+                {children}
+              {/* </div> */}
+            </SnackbarProvider>
           </UnsavedChangesProvider>
         </UserProvider>
       </ThemeProvider>
