@@ -21,6 +21,7 @@ import {
   Paper,
   Container,
   Breadcrumbs,
+  Snackbar,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -40,6 +41,7 @@ export default function AnnouncementContentPage() {
   const [endDate, setEndDate] = useState<dayjs.Dayjs | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,13 +78,18 @@ export default function AnnouncementContentPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create announcement');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || 'Failed to create announcement');
       }
 
-      router.push('/screens/content');
+      setSuccessMessage('Announcement created successfully');
+      
+      // Navigate after a short delay to allow the user to see the success message
+      setTimeout(() => {
+        router.push('/screens/content');
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
       setIsLoading(false);
     }
   };
@@ -250,6 +257,18 @@ export default function AnnouncementContentPage() {
             </Box>
           </Paper>
         </Box>
+        
+        {/* Success message snackbar */}
+        <Snackbar 
+          open={!!successMessage} 
+          autoHideDuration={6000} 
+          onClose={() => setSuccessMessage(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: '100%' }}>
+            {successMessage}
+          </Alert>
+        </Snackbar>
       </Container>
     </LocalizationProvider>
   );

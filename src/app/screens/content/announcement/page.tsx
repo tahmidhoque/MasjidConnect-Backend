@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -9,32 +9,27 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   IconButton,
   Grid,
   Tooltip,
   CircularProgress,
-  Switch,
-  FormControlLabel,
   Container,
   Divider,
-  FormHelperText,
-  InputAdornment,
+  Alert,
 } from '@mui/material';
 import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
   Close as CloseIcon,
   Info as InfoIcon,
 } from '@mui/icons-material';
 import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
 import { StatusChip } from '@/components/content/table/StatusChip';
 import { formatDate, formatDuration } from '@/lib/content-helper';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import { useDataOperation } from '@/components/common/DataOperationHandler';
+import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/components/common/FormFields';
 
 interface AnnouncementItem {
   id: string;
@@ -50,8 +45,6 @@ interface AnnouncementItem {
 
 export default function AnnouncementPage() {
   const [items, setItems] = useState<AnnouncementItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AnnouncementItem | null>(null);
   const [formData, setFormData] = useState({
@@ -67,15 +60,11 @@ export default function AnnouncementPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  useEffect(() => {
-    fetchItems();
-  }, [page, pageSize]);
-
-  const fetchItems = async () => {
+  // Fetch items function that will be passed to the data operation hook
+  const fetchItems = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await fetch(`/api/content/announcement?page=${page}&pageSize=${pageSize}`);
-      if (!response.ok) throw new Error('Failed to fetch items');
+      if (!response.ok) throw new Error('Failed to fetch announcements');
       const data = await response.json();
       setItems(data.items || data);
       if (data.meta) {
@@ -84,11 +73,35 @@ export default function AnnouncementPage() {
       }
     } catch (err) {
       console.error('Error fetching announcements:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+      throw new Error(err instanceof Error ? err.message : 'Failed to fetch announcements');
     }
-  };
+  }, [page, pageSize]);
+
+  // Initialize the data operation hook
+  const { 
+    loading, 
+    error, 
+    setError, 
+    createItem, 
+    updateItem, 
+    deleteItem 
+  } = useDataOperation({
+    resourceName: 'announcement',
+    fetchItems,
+  });
+
+  useEffect(() => {
+    // Initial data fetch
+    const loadData = async () => {
+      try {
+        await fetchItems();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load announcements');
+      }
+    };
+
+    loadData();
+  }, [fetchItems, setError]);
 
   const handleOpenModal = (item?: AnnouncementItem) => {
     if (item) {
@@ -126,38 +139,45 @@ export default function AnnouncementPage() {
       startDate: null,
       endDate: null,
     });
+    setError(null);
   };
 
   const handleSubmit = async () => {
-    try {
+    // Validate form data
+    if (!formData.title.trim()) {
+      setError('Title is required');
+      return;
+    }
+    
+    if (!formData.content.trim()) {
+      setError('Content is required');
+      return;
+    }
+    
+    if (formData.startDate && formData.endDate && formData.startDate.isAfter(formData.endDate)) {
+      setError('End date must be after start date');
+      return;
+    }
+    
+    const payload = {
+      title: formData.title,
+      content: formData.content,
+      isUrgent: formData.isUrgent,
+      duration: formData.duration,
+      startDate: formData.startDate ? formData.startDate.toISOString() : null,
+      endDate: formData.endDate ? formData.endDate.toISOString() : null,
+    };
+    
+    const operation = editingItem ? updateItem : createItem;
+    const operationName = editingItem ? 'update' : 'create';
+    const successMessage = editingItem 
+      ? 'Announcement updated successfully' 
+      : 'Announcement created successfully';
+
+    const result = await operation(async () => {
       const url = editingItem 
-        ? `/api/content/announcement/${editingItem.id}`
+        ? `/api/content/announcement/${editingItem.id}` 
         : '/api/content/announcement';
-      
-      // Validate form data
-      if (!formData.title.trim()) {
-        setError('Title is required');
-        return;
-      }
-      
-      if (!formData.content.trim()) {
-        setError('Content is required');
-        return;
-      }
-      
-      if (formData.startDate && formData.endDate && formData.startDate.isAfter(formData.endDate)) {
-        setError('End date must be after start date');
-        return;
-      }
-      
-      const payload = {
-        title: formData.title,
-        content: formData.content,
-        isUrgent: formData.isUrgent,
-        duration: formData.duration,
-        startDate: formData.startDate ? formData.startDate.toISOString() : null,
-        endDate: formData.endDate ? formData.endDate.toISOString() : null,
-      };
       
       const response = await fetch(url, {
         method: editingItem ? 'PUT' : 'POST',
@@ -167,13 +187,17 @@ export default function AnnouncementPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error('Failed to save item');
+      const responseData = await response.json();
       
-      await fetchItems();
+      if (!response.ok) {
+        throw new Error(responseData?.message || `Failed to ${operationName} announcement`);
+      }
+      
+      return responseData;
+    }, successMessage);
+
+    if (result.success) {
       handleCloseModal();
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
     }
   };
 
@@ -181,22 +205,20 @@ export default function AnnouncementPage() {
     if (!window.confirm('Are you sure you want to delete this announcement?')) {
       return;
     }
-    
-    try {
-      setLoading(true);
+
+    await deleteItem(async () => {
       const response = await fetch(`/api/content/announcement/${id}`, {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('Failed to delete item');
+      const responseData = await response.json();
       
-      await fetchItems();
-    } catch (err) {
-      console.error('Error deleting announcement:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+      if (!response.ok) {
+        throw new Error(responseData?.message || 'Failed to delete announcement');
+      }
+      
+      return responseData;
+    });
   };
 
   // Table columns configuration
@@ -256,6 +278,12 @@ export default function AnnouncementPage() {
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+        
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" component="h1" gutterBottom>
             Announcements
@@ -314,113 +342,79 @@ export default function AnnouncementPage() {
           <DialogContent sx={{ pt: 2, pb: 2, px: '32px' }}>
             {error && (
               <Box sx={{ mb: 3 }}>
-                <Typography color="error">{error}</Typography>
+                <Alert severity="error" onClose={() => setError(null)}>
+                  {error}
+                </Alert>
               </Box>
             )}
             
             <Grid container spacing={3}>
               <Grid item xs={12}>
-                <TextField
+                <FormTextField
                   autoFocus
                   label="Title"
                   type="text"
-                  fullWidth
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   required
                   helperText="Enter a concise title for your announcement"
+                  tooltip="A brief, descriptive title for your announcement"
                 />
               </Grid>
               
               <Grid item xs={12}>
-                <TextField
+                <FormTextArea
                   label="Content"
-                  type="text"
-                  fullWidth
-                  multiline
-                  rows={4}
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   required
                   helperText="Enter the main message of your announcement"
+                  tooltip="The detailed message that will be displayed to users"
+                  rows={4}
                 />
               </Grid>
               
               <Grid item xs={12}>
-                <TextField
+                <FormTextField
                   label="Display Duration"
                   type="number"
-                  fullWidth
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">seconds</InputAdornment>,
-                  }}
+                  endAdornment="seconds"
                   helperText="How long should this announcement be displayed on each cycle?"
+                  tooltip="Duration in seconds that the announcement will be shown before moving to the next content"
                   inputProps={{ min: 5, max: 120 }}
                 />
               </Grid>
-              
+
               <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.isUrgent}
-                      onChange={(e) => setFormData({ ...formData, isUrgent: e.target.checked })}
-                      color="error"
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography>Mark as Urgent</Typography>
-                      <Tooltip title="Urgent announcements can be styled differently on displays to grab attention">
-                        <InfoIcon fontSize="small" color="action" />
-                      </Tooltip>
-                    </Box>
-                  }
+                <FormSwitch
+                  label="Mark as Urgent"
+                  checked={formData.isUrgent}
+                  onChange={(checked) => setFormData({ ...formData, isUrgent: checked })}
+                  helperText="Urgent announcements are highlighted on the display"
+                  tooltip="Enable this to make the announcement stand out with special styling"
+                  color="error"
                 />
-                <FormHelperText>
-                  Urgent announcements are highlighted to grab immediate attention
-                </FormHelperText>
               </Grid>
               
-              <Grid item xs={12}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Date Range
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Optionally set a date range when this announcement should be visible. If no dates are specified, the announcement will always be shown.
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <DateTimePicker
-                      label="Start Date/Time"
-                      value={formData.startDate}
-                      onChange={(value) => setFormData({ ...formData, startDate: value })}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          variant: 'outlined',
-                          helperText: 'When should this announcement start showing?'
-                        }
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <DateTimePicker
-                      label="End Date/Time"
-                      value={formData.endDate}
-                      onChange={(value) => setFormData({ ...formData, endDate: value })}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          variant: 'outlined',
-                          helperText: 'When should this announcement stop showing?'
-                        }
-                      }}
-                    />
-                  </Grid>
-                </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormDateTimePicker
+                  label="Start Date/Time"
+                  value={formData.startDate}
+                  onChange={(value) => setFormData({ ...formData, startDate: value })}
+                  helperText="When should this announcement start showing?"
+                  tooltip="If not set, the announcement will be shown immediately"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormDateTimePicker
+                  label="End Date/Time"
+                  value={formData.endDate}
+                  onChange={(value) => setFormData({ ...formData, endDate: value })}
+                  helperText="When should this announcement stop showing?"
+                  tooltip="If not set, the announcement will be shown indefinitely"
+                />
               </Grid>
             </Grid>
           </DialogContent>
@@ -428,8 +422,20 @@ export default function AnnouncementPage() {
             <Button onClick={handleCloseModal} variant="outlined">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} variant="contained" color="primary">
-              {editingItem ? 'Update' : 'Create'}
+            <Button 
+              onClick={handleSubmit} 
+              variant="contained" 
+              color="primary" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <CircularProgress size={20} sx={{ mr: 1 }} color="inherit" />
+                  {editingItem ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                editingItem ? 'Update' : 'Create'
+              )}
             </Button>
           </DialogActions>
         </Dialog>
