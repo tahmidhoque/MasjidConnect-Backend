@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findFirst({
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     });
 
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     // Get URL parameters for pagination
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error fetching announcements:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findFirst({
@@ -102,14 +102,14 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const data = await request.json();
     
     // Validate required fields
     if (!data.title || !data.content) {
-      return new NextResponse('Title and content are required', { status: 400 });
+      return NextResponse.json({ message: 'Title and content are required' }, { status: 400 });
     }
 
     // Prepare the content field as a JSON object
@@ -118,24 +118,32 @@ export async function POST(request: Request) {
       isUrgent: data.isUrgent || false,
     };
 
-    // Create the content item
-    const item = await prisma.contentItem.create({
-      data: {
-        title: data.title,
-        content: contentObject,
-        type: 'ANNOUNCEMENT',
-        duration: data.duration || 20,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
-        isActive: data.isActive !== undefined ? data.isActive : true,
-        masjidId: user.masjidId,
-      },
-    });
+    try {
+      // Create the content item
+      const item = await prisma.contentItem.create({
+        data: {
+          title: data.title,
+          content: contentObject,
+          type: 'ANNOUNCEMENT',
+          duration: data.duration || 20,
+          startDate: data.startDate || null,
+          endDate: data.endDate || null,
+          isActive: data.isActive !== undefined ? data.isActive : true,
+          masjidId: user.masjidId,
+        },
+      });
 
-    return NextResponse.json(item);
+      console.log('Successfully created announcement:', item.id);
+      return NextResponse.json(item);
+    } catch (createError) {
+      console.error('Database error creating announcement:', createError);
+      return NextResponse.json({ 
+        message: 'Failed to create announcement. Please try again.' 
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Error creating announcement:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -144,12 +152,12 @@ export async function PUT(request: Request) {
   try {
     const id = request.url.split('/').pop();
     if (!id) {
-      return new NextResponse('Announcement ID is required', { status: 400 });
+      return NextResponse.json({ message: 'Announcement ID is required' }, { status: 400 });
     }
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findFirst({
@@ -158,7 +166,7 @@ export async function PUT(request: Request) {
     });
 
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     // First, check if the announcement exists and belongs to this masjid
@@ -171,14 +179,14 @@ export async function PUT(request: Request) {
     });
 
     if (!existingItem) {
-      return new NextResponse('Announcement not found or not authorized', { status: 404 });
+      return NextResponse.json({ message: 'Announcement not found or not authorized' }, { status: 404 });
     }
 
     const data = await request.json();
     
     // Validate required fields
     if (!data.title || !data.content) {
-      return new NextResponse('Title and content are required', { status: 400 });
+      return NextResponse.json({ message: 'Title and content are required' }, { status: 400 });
     }
 
     // Prepare the content field as a JSON object
@@ -187,37 +195,50 @@ export async function PUT(request: Request) {
       isUrgent: data.isUrgent || false,
     };
 
-    // Update the content item
-    const updatedItem = await prisma.contentItem.update({
-      where: { id },
-      data: {
-        title: data.title,
-        content: contentObject,
-        duration: data.duration || existingItem.duration,
-        startDate: data.startDate || existingItem.startDate,
-        endDate: data.endDate || existingItem.endDate,
-        isActive: data.isActive !== undefined ? data.isActive : existingItem.isActive,
-      },
-    });
+    try {
+      // Update the content item
+      const updatedItem = await prisma.contentItem.update({
+        where: { id },
+        data: {
+          title: data.title,
+          content: contentObject,
+          duration: data.duration || existingItem.duration,
+          startDate: data.startDate || existingItem.startDate,
+          endDate: data.endDate || existingItem.endDate,
+          isActive: data.isActive !== undefined ? data.isActive : existingItem.isActive,
+        },
+      });
 
-    return NextResponse.json(updatedItem);
+      return NextResponse.json(updatedItem);
+    } catch (updateError) {
+      console.error('Database error updating announcement:', updateError);
+      return NextResponse.json({ 
+        message: 'Failed to update announcement. Please try again.' 
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Error updating announcement:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 // Handler for DELETE requests
 export async function DELETE(request: Request) {
   try {
-    const id = request.url.split('/').pop();
+    // Extract the ID from the URL path
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const id = pathParts[pathParts.length - 1];
+    
     if (!id) {
-      return new NextResponse('Announcement ID is required', { status: 400 });
+      return NextResponse.json({ message: 'Announcement ID is required' }, { status: 400 });
     }
+
+    console.log('Attempting to delete announcement with ID:', id);
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const user = await prisma.user.findFirst({
@@ -226,7 +247,7 @@ export async function DELETE(request: Request) {
     });
 
     if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     // First, check if the announcement exists and belongs to this masjid
@@ -239,17 +260,26 @@ export async function DELETE(request: Request) {
     });
 
     if (!existingItem) {
-      return new NextResponse('Announcement not found or not authorized', { status: 404 });
+      console.log('Announcement not found:', id);
+      return NextResponse.json({ message: 'Announcement not found or not authorized' }, { status: 404 });
     }
 
-    // Delete the content item
-    await prisma.contentItem.delete({
-      where: { id },
-    });
-
-    return new NextResponse(null, { status: 204 });
+    try {
+      // Delete the content item
+      await prisma.contentItem.delete({
+        where: { id },
+      });
+      
+      console.log('Successfully deleted announcement:', id);
+      return NextResponse.json({ message: 'Announcement deleted successfully' }, { status: 200 });
+    } catch (deleteError) {
+      console.error('Database error deleting announcement:', deleteError);
+      return NextResponse.json({ 
+        message: 'Failed to delete announcement. It may be referenced by other items.' 
+      }, { status: 500 });
+    }
   } catch (error) {
     console.error('Error deleting announcement:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 } 
