@@ -130,8 +130,8 @@ export default function AsmaAlHusnaPage() {
               alt="99 Names of Allah" 
               width={20} 
               height={20}
-              style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(37%) saturate(1254%) hue-rotate(182deg) brightness(96%) contrast(96%)' }} // Makes the SVG #0A2647 color
-            />
+              style={{ filter: 'brightness(0) invert(1)' }} // Makes the SVG white to match other icons
+              />
           </Box>
           <Box>
             <Typography variant="body1" fontWeight={500}>
