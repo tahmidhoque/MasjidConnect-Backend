@@ -410,7 +410,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Set initial loading state to true
   const [saveError, setSaveError] = useState<string | null>(null);
   const [scheduleItems, setScheduleItems] = useState<ContentScheduleItem[]>([]);
   const [originalItems, setOriginalItems] = useState<ContentScheduleItem[]>([]);
@@ -455,6 +455,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         description: currentSchedule.description || '',
         isActive: currentSchedule.isActive
       });
+      setIsLoading(false); // Set loading to false once data is loaded
     }
   }, [currentSchedule]);
 
@@ -670,7 +671,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        {currentSchedule?.name || 'Loading...'}
+        {isLoading ? 'Loading Schedule...' : (currentSchedule?.name || 'Schedule')}
       </Typography>
 
       {/* Tabs */}
@@ -685,81 +686,87 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
       <TabPanel value={value} index={0}>
         <Card>
           <CardContent>
-            <Stack spacing={3}>
-              <Box>
-                <Typography variant="h6" component="div" gutterBottom>
-                  General Settings
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Configure the basic settings for this content schedule.
-                </Typography>
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
               </Box>
+            ) : (
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="h6" component="div" gutterBottom>
+                    General Settings
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Configure the basic settings for this content schedule.
+                  </Typography>
+                </Box>
 
-              {saveError && (
-                <Alert severity="error" onClose={() => setSaveError(null)}>
-                  {saveError}
-                </Alert>
-              )}
+                {saveError && (
+                  <Alert severity="error" onClose={() => setSaveError(null)}>
+                    {saveError}
+                  </Alert>
+                )}
 
-              <TextField
-                label="Schedule Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                required
-                error={!name.trim()}
-                helperText={!name.trim() ? 'Name is required' : ''}
-              />
-
-              <TextField
-                label="Description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                fullWidth
-                multiline
-                rows={3}
-                helperText="Optional description for this schedule"
-              />
-
-              <Box>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={isActive}
-                      onChange={(e) => setIsActive(e.target.checked)}
-                      color="primary"
-                    />
-                  }
-                  label="Active"
+                <TextField
+                  label="Schedule Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  fullWidth
+                  required
+                  error={!isLoading && !name.trim()}
+                  helperText={(!isLoading && !name.trim()) ? 'Name is required' : ''}
                 />
-                <Tooltip title="When active, this schedule can be assigned to displays">
-                  <IconButton size="small" sx={{ ml: 1, mt: -0.5 }}>
-                    <InfoIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <FormHelperText>
-                  Inactive schedules won't be shown on displays
-                </FormHelperText>
-              </Box>
 
-              <Box>
-                <Button
-                  variant="contained"
-                  onClick={handleSave}
-                  disabled={isSaving || !name.trim()}
-                  sx={{
-                    borderRadius: 1.5,
-                    px: 2.5,
-                    py: 0.75,
-                    fontWeight: 500,
-                    boxShadow: 1
-                  }}
-                >
-                  {isSaving ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </Box>
-            </Stack>
+                <TextField
+                  label="Description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  helperText="Optional description for this schedule"
+                />
+
+                <Box>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={isActive}
+                        onChange={(e) => setIsActive(e.target.checked)}
+                        color="primary"
+                      />
+                    }
+                    label="Active"
+                  />
+                  <Tooltip title="When active, this schedule can be assigned to displays">
+                    <IconButton size="small" sx={{ ml: 1, mt: -0.5 }}>
+                      <InfoIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <FormHelperText>
+                    Inactive schedules won't be shown on displays
+                  </FormHelperText>
+                </Box>
+
+                <Box>
+                  <Button
+                    variant="contained"
+                    onClick={handleSave}
+                    disabled={isSaving || !name.trim()}
+                    sx={{
+                      borderRadius: 1.5,
+                      px: 2.5,
+                      py: 0.75,
+                      fontWeight: 500,
+                      boxShadow: 1
+                    }}
+                  >
+                    {isSaving ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </Box>
+              </Stack>
+            )}
           </CardContent>
         </Card>
       </TabPanel>
@@ -768,87 +775,93 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
       <TabPanel value={value} index={1}>
         <Card>
           <CardContent>
-            <Stack spacing={3}>
-              <Box>
-                <Typography variant="h6" component="div" gutterBottom>
-                  Schedule Slides
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Add and arrange content items that will be displayed in this schedule. Drag items to change their order.
-                </Typography>
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
               </Box>
+            ) : (
+              <Stack spacing={3}>
+                <Box>
+                  <Typography variant="h6" component="div" gutterBottom>
+                    Schedule Slides
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Add and arrange content items that will be displayed in this schedule. Drag items to change their order.
+                  </Typography>
+                </Box>
 
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="contained"
-                  onClick={handleSaveItems}
-                  disabled={isSaving}
-                  startIcon={isSaving ? <CircularProgress size={20} /> : null}
-                  sx={{
-                    borderRadius: 1.5,
-                    px: 2.5,
-                    py: 0.75,
-                    fontWeight: 500,
-                    boxShadow: 1
-                  }}
-                >
-                  {isSaving ? 'Saving...' : 'Save Order'}
-                </Button>
-              </Box>
-
-              {saveError && (
-                <Alert severity="error" onClose={() => setSaveError(null)}>
-                  {saveError}
-                </Alert>
-              )}
-
-              {!scheduleItems.length ? (
-                <Alert severity="info">
-                  No content items added to this schedule yet. Add content items to display in this schedule.
-                </Alert>
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={scheduleItems.map(item => item.id)}
-                    strategy={verticalListSortingStrategy}
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleSaveItems}
+                    disabled={isSaving}
+                    startIcon={isSaving ? <CircularProgress size={20} /> : null}
+                    sx={{
+                      borderRadius: 1.5,
+                      px: 2.5,
+                      py: 0.75,
+                      fontWeight: 500,
+                      boxShadow: 1
+                    }}
                   >
-                    {scheduleItems.map((item) => (
-                      <SortableItem
-                        key={item.id}
-                        item={item}
-                        onDelete={handleDeleteItem}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              )}
+                    {isSaving ? 'Saving...' : 'Save Order'}
+                  </Button>
+                </Box>
 
-              <Box sx={{ mt: 2 }}>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  startIcon={<AddIcon />}
-                  onClick={handleOpenTypeModal}
-                  sx={{
-                    borderRadius: 1.5,
-                    py: 1,
-                    fontWeight: 500,
-                    borderStyle: 'dashed',
-                    borderWidth: 2,
-                    '&:hover': {
+                {saveError && (
+                  <Alert severity="error" onClose={() => setSaveError(null)}>
+                    {saveError}
+                  </Alert>
+                )}
+
+                {!scheduleItems.length ? (
+                  <Alert severity="info">
+                    No content items added to this schedule yet. Add content items to display in this schedule.
+                  </Alert>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={scheduleItems.map(item => item.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {scheduleItems.map((item) => (
+                        <SortableItem
+                          key={item.id}
+                          item={item}
+                          onDelete={handleDeleteItem}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                )}
+
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenTypeModal}
+                    sx={{
+                      borderRadius: 1.5,
+                      py: 1,
+                      fontWeight: 500,
                       borderStyle: 'dashed',
                       borderWidth: 2,
-                    }
-                  }}
-                >
-                  Add Content Items
-                </Button>
-              </Box>
-            </Stack>
+                      '&:hover': {
+                        borderStyle: 'dashed',
+                        borderWidth: 2,
+                      }
+                    }}
+                  >
+                    Add Content Items
+                  </Button>
+                </Box>
+              </Stack>
+            )}
           </CardContent>
         </Card>
       </TabPanel>
