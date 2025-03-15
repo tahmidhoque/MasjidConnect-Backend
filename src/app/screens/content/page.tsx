@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -10,19 +10,25 @@ import {
   Button,
   Card,
   CardContent,
-  Alert,
   Tooltip,
   Switch,
   Stack,
   CircularProgress,
+  Grid,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import MonitorIcon from '@mui/icons-material/Monitor';
 import Image from 'next/image';
 import { useContentSchedules } from '@/lib/hooks/use-content-schedules';
+import { useScreens } from '@/lib/hooks/use-screens';
 import PageHeader from '@/components/layouts/page-header';
+import ScreenAssignment from '@/components/screens/ScreenAssignment';
+import ScreenAssignmentInfo from '@/components/screens/ScreenAssignmentInfo';
+import NoScreensState from '@/components/screens/NoScreensState';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 // Custom Asma Al-Husna icon component
 const AsmaAlHusnaIcon = () => (
@@ -93,14 +99,21 @@ function ContentManagementContent() {
   const [value, setValue] = useState(0);
   const {
     schedules,
-    loading,
-    error,
+    loading: schedulesLoading,
+    error: schedulesError,
     deleteSchedule,
     toggleActive,
     setDefault,
     duplicateSchedule,
     createSchedule
   } = useContentSchedules();
+  
+  const {
+    screens,
+    loading: screensLoading,
+    error: screensError,
+    assignSchedule,
+  } = useScreens();
 
   // Add a title at the top of the page
   const pageTitle = "Content Management";
@@ -204,13 +217,22 @@ function ContentManagementContent() {
     </Card>
   );
 
+  // Get the default schedule
+  const getDefaultSchedule = () => {
+    return schedules.find(schedule => schedule.isDefault) || null;
+  };
+
+  // Handle schedule assignment
+  const handleAssignSchedule = async (screenId: string, scheduleId: string | null) => {
+    await assignSchedule(screenId, scheduleId);
+  };
+
   // If there's a serious error, show a full page error
-  if (error && !loading && (!schedules || schedules.length === 0)) {
+  if (schedulesError && !schedulesLoading && (!schedules || schedules.length === 0)) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          <Typography variant="h6">Failed to load content schedules</Typography>
-          <Typography variant="body2">{error}</Typography>
+        <CustomAlert severity="error" title="Failed to load content schedules" sx={{ mb: 2 }}>
+          <Typography variant="body2">{schedulesError}</Typography>
           <Button 
             onClick={() => window.location.reload()} 
             variant="outlined" 
@@ -218,22 +240,46 @@ function ContentManagementContent() {
           >
             Retry
           </Button>
-        </Alert>
+        </CustomAlert>
       </Box>
     );
   }
+
+  // If there's no default schedule, inform the user
+  const [hasDefaultSchedule, setHasDefaultSchedule] = useState(false);
+
+  useEffect(() => {
+    if (!schedulesLoading && schedules.length > 0) {
+      const hasDefault = schedules.some(s => s.isDefault);
+      setHasDefaultSchedule(hasDefault);
+    }
+  }, [schedules, schedulesLoading]);
 
   return (
     <Box sx={{ width: '100%' }}>
       <PageHeader title={pageTitle} />
       
-      {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab label="Content Schedules" />
-          <Tab label="Screen Assignments" />
-        </Tabs>
-      </Box>
+      <Tabs
+        value={value}
+        onChange={handleChange}
+        aria-label="content management tabs"
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab
+          icon={<AutoStoriesIcon sx={{ fontSize: 18 }} />}
+          iconPosition="start"
+          label="Content Schedules"
+          id="content-tab-0"
+          aria-controls="content-tabpanel-0"
+        />
+        <Tab
+          icon={<MonitorIcon sx={{ fontSize: 18 }} />}
+          iconPosition="start"
+          label="Screen Assignments"
+          id="content-tab-1"
+          aria-controls="content-tabpanel-1"
+        />
+      </Tabs>
 
       {/* Description */}
       <Box sx={{ mt: 2, mb: 1 }}>
@@ -246,19 +292,23 @@ function ContentManagementContent() {
       </Box>
 
       {/* Non-fatal error message */}
-      {error && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
+      {schedulesError && (
+        <CustomAlert severity="warning" sx={{ mb: 2 }}>
+          <Typography variant="body2">{schedulesError}</Typography>
+        </CustomAlert>
       )}
 
       {/* Content Schedules */}
       <TabPanel value={value} index={0}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+        {schedulesLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
-        ) : !schedules || schedules.length === 0 ? (
+        ) : schedulesError ? (
+          <CustomAlert severity="error" sx={{ mt: 2 }}>
+            <Typography variant="body2">Error loading schedules: {schedulesError}</Typography>
+          </CustomAlert>
+        ) : schedules.length === 0 ? (
           renderEmptyState()
         ) : (
           <>
@@ -408,8 +458,38 @@ function ContentManagementContent() {
 
       {/* Screen Assignments */}
       <TabPanel value={value} index={1}>
-        {/* TODO: Implement screen assignments view */}
-        <Typography>Screen assignments coming soon...</Typography>
+        {schedulesLoading || screensLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : schedulesError || screensError ? (
+          <CustomAlert severity="error" sx={{ mt: 2 }}>
+            <Typography variant="body2">Error loading data: {schedulesError || screensError}</Typography>
+          </CustomAlert>
+        ) : screens.length === 0 ? (
+          <NoScreensState />
+        ) : (
+          <>
+            <ScreenAssignmentInfo />
+            
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Your Screens ({screens.length})
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {screens.map((screen) => (
+                <Grid item xs={12} md={6} key={screen.id}>
+                  <ScreenAssignment
+                    screen={screen}
+                    schedules={schedules}
+                    defaultSchedule={getDefaultSchedule()}
+                    onAssignSchedule={handleAssignSchedule}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </>
+        )}
       </TabPanel>
     </Box>
   );
@@ -419,13 +499,12 @@ function ContentManagementContent() {
 function ErrorFallback({ error }: { error: Error }) {
   return (
     <Box sx={{ p: 3 }}>
-      <Alert severity="error" sx={{ mb: 2 }}>
-        <Typography variant="h6">Something went wrong</Typography>
+      <CustomAlert severity="error" title="Something went wrong" sx={{ mb: 2 }}>
         <Typography variant="body2">{error.message}</Typography>
         <Button onClick={() => window.location.reload()} variant="outlined" sx={{ mt: 2 }}>
           Try again
         </Button>
-      </Alert>
+      </CustomAlert>
     </Box>
   );
 }

@@ -76,6 +76,7 @@ import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { format } from 'date-fns';
 import { useContentCreation } from '@/components/content/ContentCreationContext';
 import Image from 'next/image';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 // Define content types for filtering
 enum ContentType {
@@ -425,6 +426,7 @@ function ContentTypeTile({ type, onClick }: ContentTypeTileProps) {
 
 export default function PlaylistEdit({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
+  const id = resolvedParams.id;
   const router = useRouter();
   const [value, setValue] = useState(0); // Start with General settings tab
   const [name, setName] = useState('');
@@ -456,7 +458,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   );
 
   // Find the current schedule
-  const currentSchedule = schedules.find(s => s.id === resolvedParams.id);
+  const currentSchedule = schedules.find(s => s.id === id);
 
   // Filter available content items by selected type
   const filteredContentItems = selectedType 
@@ -577,9 +579,9 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
       const payload = { slides };
       
       console.log('Saving schedule items with payload:', JSON.stringify(payload, null, 2));
-      console.log('Schedule ID:', resolvedParams.id);
+      console.log('Schedule ID:', id);
       
-      const updatedSchedule = await updateSchedule(resolvedParams.id, payload);
+      const updatedSchedule = await updateSchedule(id, payload);
       
       if (updatedSchedule) {
         console.log('Schedule updated successfully:', updatedSchedule);
@@ -604,7 +606,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     setSaveError(null);
 
     try {
-      const updatedSchedule = await updateSchedule(resolvedParams.id, {
+      const updatedSchedule = await updateSchedule(id, {
         name: name.trim(),
         description,
         isActive
@@ -723,9 +725,9 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                 </Box>
 
                 {saveError && (
-                  <Alert severity="error" onClose={() => setSaveError(null)}>
+                  <CustomAlert severity="error" onClose={() => setSaveError(null)}>
                     {saveError}
-                  </Alert>
+                  </CustomAlert>
                 )}
 
                 <TextField
@@ -830,15 +832,15 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                 </Box>
 
                 {saveError && (
-                  <Alert severity="error" onClose={() => setSaveError(null)}>
+                  <CustomAlert severity="error" onClose={() => setSaveError(null)}>
                     {saveError}
-                  </Alert>
+                  </CustomAlert>
                 )}
 
                 {!scheduleItems.length ? (
-                  <Alert severity="info">
+                  <CustomAlert severity="info">
                     No content items added to this schedule yet. Add content items to display in this schedule.
-                  </Alert>
+                  </CustomAlert>
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -1038,11 +1040,10 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                 <CircularProgress />
               </Box>
             ) : filteredContentItems.length === 0 ? (
-              <Alert 
+              <CustomAlert 
                 severity="info" 
-                variant="outlined"
+                title="No content found"
                 sx={{ 
-                  borderRadius: 2,
                   mt: 2
                 }}
                 action={
@@ -1057,9 +1058,10 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                   </Button>
                 }
               >
-                <AlertTitle>No content found</AlertTitle>
-                No {selectedType && getContentTypeName(selectedType)} content items found. Create a new one to get started.
-              </Alert>
+                <Typography variant="body2">
+                  No {selectedType && getContentTypeName(selectedType)} content items found. Create a new one to get started.
+                </Typography>
+              </CustomAlert>
             ) : (
               <>
                 <Box sx={{ 

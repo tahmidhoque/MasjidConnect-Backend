@@ -15,7 +15,6 @@ import {
   CircularProgress,
   Container,
   Divider,
-  Alert,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -33,6 +32,7 @@ import { FormTextField, FormTextArea, FormDateTimePicker, FormSwitch } from '@/c
 import { ContentModal } from '@/components/common/ContentModal';
 import { AnnouncementForm } from '@/components/content/announcement-form';
 import { ContentType } from '@prisma/client';
+import CustomAlert from '@/components/ui/CustomAlert';
 
 interface AnnouncementItem {
   id: string;
@@ -285,9 +285,9 @@ export default function AnnouncementPage() {
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
+          <CustomAlert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            <Typography variant="body2">{error}</Typography>
+          </CustomAlert>
         )}
         
         <Box sx={{ mb: 3 }}>
