@@ -23,6 +23,7 @@ export interface UpdateContentScheduleDTO {
     id: string;
     type: string;
     duration: number;
+    order?: number;
   }>;
 }
 

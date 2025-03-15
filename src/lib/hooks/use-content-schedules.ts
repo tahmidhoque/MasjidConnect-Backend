@@ -27,7 +27,7 @@ export interface CreateScheduleData {
   name: string;
   description: string;
   isActive?: boolean;
-  slides: { id: string; type: string; duration: number }[];
+  slides: { id: string; type: string; duration: number; order?: number }[];
 }
 
 /**
@@ -89,20 +89,21 @@ export function useContentSchedules() {
 
   const updateSchedule = async (id: string, data: Partial<CreateScheduleData>) => {
     try {
-      // Filter out placeholder IDs
-      const scheduleData = {
-        ...data,
-        slides: data.slides?.filter(slide => 
-          !slide.id.startsWith('placeholder') && slide.id.match(/^[0-9a-f]{24}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-        )
-      };
+      // If slides are provided, ensure they have proper order
+      if (data.slides) {
+        // Add order property if not already present
+        data.slides = data.slides.map((slide, index) => ({
+          ...slide,
+          order: slide.order !== undefined ? slide.order : index
+        }));
+      }
 
       const response = await fetch(`/api/schedules/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(scheduleData),
+        body: JSON.stringify(data),
       });
       
       if (!response.ok) {

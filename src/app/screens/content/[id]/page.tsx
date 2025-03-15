@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   Tab,
   Typography,
   Alert,
+  AlertTitle,
   Card,
   CardContent,
   IconButton,
@@ -29,6 +30,10 @@ import {
   Grid,
   Paper,
   Divider,
+  Tooltip,
+  FormControlLabel,
+  Switch,
+  FormHelperText,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
@@ -41,6 +46,10 @@ import {
   MenuBook as VerseIcon,
   Code as CustomIcon,
   ArrowBack as ArrowBackIcon,
+  Info as InfoIcon,
+  CalendarMonth as CalendarIcon,
+  Warning as WarningIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { useContentSchedules, ContentScheduleItem } from '@/lib/hooks/use-content-schedules';
 import {
@@ -61,6 +70,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getContentItems } from '@/lib/services/content';
+import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import { format } from 'date-fns';
+import { useContentCreation } from '@/components/content/ContentCreationContext';
 
 // Define content types for filtering
 enum ContentType {
@@ -75,8 +87,11 @@ interface ContentItem {
   id: string;
   title: string;
   type: ContentType;
+  content?: any;
   duration: number;
   isActive: boolean;
+  startDate?: Date | string;
+  endDate?: Date | string;
 }
 
 interface TabPanelProps {
@@ -107,17 +122,19 @@ function TabPanel(props: TabPanelProps) {
 
 // Get content type icon
 function getContentTypeIcon(type: string) {
+  const iconStyle = { fontSize: 16 };
+  
   switch (type) {
     case ContentType.VERSE_HADITH:
-      return <VerseIcon sx={{ fontSize: 40 }} />;
+      return <VerseIcon sx={iconStyle} />;
     case ContentType.ANNOUNCEMENT:
-      return <AnnouncementIcon sx={{ fontSize: 40 }} />;
+      return <AnnouncementIcon sx={iconStyle} />;
     case ContentType.EVENT:
-      return <EventIcon sx={{ fontSize: 40 }} />;
+      return <EventIcon sx={iconStyle} />;
     case ContentType.CUSTOM:
-      return <CustomIcon sx={{ fontSize: 40 }} />;
+      return <CustomIcon sx={iconStyle} />;
     default:
-      return <CustomIcon sx={{ fontSize: 40 }} />;
+      return <CustomIcon sx={iconStyle} />;
   }
 }
 
@@ -135,6 +152,31 @@ function getContentTypeName(type: string): string {
     default:
       return type.replace('_', ' ');
   }
+}
+
+// Format date for display
+function formatDate(date: Date | string | undefined): string {
+  if (!date) return 'Not set';
+  return format(new Date(date), 'MMM d, yyyy');
+}
+
+// Check if a content item is currently active based on dates
+function isContentActive(item: any): boolean {
+  if (!item.isActive) return false;
+  
+  const now = new Date();
+  
+  // Check start date if it exists
+  if (item.startDate && new Date(item.startDate) > now) {
+    return false;
+  }
+  
+  // Check end date if it exists
+  if (item.endDate && new Date(item.endDate) < now) {
+    return false;
+  }
+  
+  return true;
 }
 
 // Sortable item component for drag and drop
@@ -157,43 +199,125 @@ function SortableItem({ item, onDelete }: SortableItemProps) {
     transition,
   };
 
+  // Cast contentItem to any to avoid type issues
+  const contentItem = item.contentItem as any;
+  const isActive = contentItem ? isContentActive(contentItem) : true;
+  const hasDateRestrictions = contentItem?.startDate || contentItem?.endDate;
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       sx={{ 
-        mb: 2,
-        borderRadius: 1,
+        mb: 1.5,
+        borderRadius: 1.5,
+        border: !isActive ? '1px solid' : 'none',
+        borderColor: 'warning.light',
+        bgcolor: !isActive ? 'rgba(255, 152, 0, 0.05)' : 'background.paper',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        '&:hover': {
+          boxShadow: '0 2px 5px rgba(0,0,0,0.15)',
+        },
       }}
     >
       <CardContent
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 2,
-          py: '8px !important'
+          gap: 1.5,
+          py: '10px !important',
+          px: 2,
+          '&:last-child': { pb: '10px !important' }
         }}
       >
         <Box
           {...attributes}
           {...listeners}
-          sx={{ cursor: 'grab', display: 'flex', alignItems: 'center' }}
+          sx={{ 
+            cursor: 'grab', 
+            display: 'flex', 
+            alignItems: 'center',
+            color: 'text.secondary',
+            '&:hover': { color: 'primary.main' }
+          }}
         >
-          <DragIcon sx={{ color: 'text.disabled' }} />
+          <DragIcon fontSize="small" />
+        </Box>
+
+        <Box 
+          sx={{ 
+            width: 28, 
+            height: 28, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            borderRadius: '50%',
+            bgcolor: 'action.hover',
+            color: contentItem?.type ? 'primary.main' : 'text.secondary',
+            mr: 0.5,
+            '& svg': {
+              display: 'block'
+            }
+          }}
+        >
+          {contentItem ? getContentTypeIcon(contentItem.type) : <CustomIcon sx={{ fontSize: 16 }} />}
         </Box>
 
         <Box sx={{ flex: 1 }}>
-          <Typography variant="body2">
-            {item.contentItem ? item.contentItem.type : "Unknown Content"}
+          <Typography variant="body2" fontWeight={500}>
+            {contentItem?.title || "Unknown Content"}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Item #{item.order + 1}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              {contentItem ? getContentTypeName(contentItem.type) : "Unknown Type"}
+            </Typography>
+            
+            {hasDateRestrictions && (
+              <Tooltip
+                title={
+                  <Box>
+                    {!isActive && (
+                      <Typography variant="caption" sx={{ display: 'block', fontWeight: 'bold', mb: 1 }}>
+                        This item is not currently active
+                      </Typography>
+                    )}
+                    <Typography variant="caption" sx={{ display: 'block' }}>
+                      Start: {formatDate(contentItem?.startDate)}
+                    </Typography>
+                    <Typography variant="caption" sx={{ display: 'block' }}>
+                      End: {formatDate(contentItem?.endDate)}
+                    </Typography>
+                  </Box>
+                }
+              >
+                <Box component="span" sx={{ display: 'inline-flex', ml: 1 }}>
+                  <CalendarIcon 
+                    fontSize="small" 
+                    sx={{ 
+                      fontSize: '0.75rem', 
+                      color: isActive ? 'text.secondary' : 'warning.main' 
+                    }} 
+                  />
+                </Box>
+              </Tooltip>
+            )}
+            
+            {!isActive && !contentItem?.isActive && (
+              <Tooltip title="This content item is disabled">
+                <Box component="span" sx={{ display: 'inline-flex', ml: 1 }}>
+                  <WarningIcon 
+                    fontSize="small" 
+                    sx={{ fontSize: '0.75rem', color: 'warning.main' }} 
+                  />
+                </Box>
+              </Tooltip>
+            )}
+          </Box>
         </Box>
 
         <Chip 
-          icon={<TimeIcon sx={{ fontSize: '0.8rem !important' }} />}
-          label={`${item.contentItem?.duration || 0}s`}
+          icon={<TimeIcon sx={{ fontSize: '0.75rem !important' }} />}
+          label={`${contentItem?.duration || 0}s`}
           size="small"
           sx={{ 
             height: '24px',
@@ -204,7 +328,18 @@ function SortableItem({ item, onDelete }: SortableItemProps) {
           }}
         />
 
-        <IconButton size="small" onClick={() => onDelete(item.id)}>
+        <IconButton 
+          size="small" 
+          onClick={() => onDelete(item.id)}
+          sx={{ 
+            ml: 0.5, 
+            color: 'text.secondary',
+            '&:hover': { 
+              color: 'error.main',
+              bgcolor: 'error.lighter'
+            }
+          }}
+        >
           <DeleteIcon fontSize="small" />
         </IconButton>
       </CardContent>
@@ -230,16 +365,37 @@ function ContentTypeTile({ type, onClick }: ContentTypeTileProps) {
         gap: 2,
         cursor: 'pointer',
         transition: 'all 0.2s',
-        borderRadius: 1,
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: 4,
+          borderColor: 'primary.main',
+          bgcolor: 'primary.50',
         },
       }}
       onClick={onClick}
     >
-      {getContentTypeIcon(type)}
-      <Typography variant="body1" align="center">
+      <Box 
+        sx={{ 
+          p: 1.5, 
+          borderRadius: '50%', 
+          bgcolor: 'primary.50',
+          color: 'primary.main',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 56,
+          height: 56,
+          '& svg': {
+            display: 'block'
+          }
+        }}
+      >
+        {React.cloneElement(getContentTypeIcon(type), { sx: { fontSize: 28 } })}
+      </Box>
+      <Typography variant="body1" align="center" fontWeight={500}>
         {getContentTypeName(type)}
       </Typography>
     </Paper>
@@ -251,11 +407,17 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   const router = useRouter();
   const [value, setValue] = useState(0); // Start with General settings tab
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [scheduleItems, setScheduleItems] = useState<ContentScheduleItem[]>([]);
+  const [originalItems, setOriginalItems] = useState<ContentScheduleItem[]>([]);
+  const [originalData, setOriginalData] = useState({ name: '', description: '', isActive: true });
   const { schedules, updateSchedule } = useContentSchedules();
+  const { setHasUnsavedChanges } = useUnsavedChanges();
+  const { openContentCreationModal } = useContentCreation();
 
   // State for content item selector
   const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
@@ -284,16 +446,41 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     if (currentSchedule) {
       setName(currentSchedule.name);
+      setDescription(currentSchedule.description || '');
+      setIsActive(currentSchedule.isActive);
       setScheduleItems(currentSchedule.items || []);
+      setOriginalItems(currentSchedule.items || []);
+      setOriginalData({
+        name: currentSchedule.name,
+        description: currentSchedule.description || '',
+        isActive: currentSchedule.isActive
+      });
     }
   }, [currentSchedule]);
+
+  // Track unsaved changes
+  useEffect(() => {
+    const hasGeneralChanges = 
+      name !== originalData.name || 
+      description !== originalData.description || 
+      isActive !== originalData.isActive;
+    
+    const hasItemChanges = JSON.stringify(scheduleItems) !== JSON.stringify(originalItems);
+    
+    setHasUnsavedChanges(hasGeneralChanges || hasItemChanges);
+    
+    return () => {
+      setHasUnsavedChanges(false);
+    };
+  }, [name, description, isActive, scheduleItems, originalData, originalItems, setHasUnsavedChanges]);
 
   // Fetch available content items
   const fetchContentItems = async () => {
     setIsLoading(true);
     try {
       const items = await getContentItems();
-      setAvailableContentItems(items as unknown as ContentItem[]);
+      // Cast to any to avoid type issues with potentially missing properties
+      setAvailableContentItems(items as any[]);
     } catch (error) {
       console.error('Error fetching content items:', error);
     } finally {
@@ -336,14 +523,49 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     setSaveError(null);
 
     try {
-      await updateSchedule(resolvedParams.id, {
-        slides: scheduleItems.map(item => ({
-          id: item.contentItemId,
-          type: item.contentItem?.type || '',
-          duration: item.contentItem?.duration || 20
-        }))
+      // Create a map to deduplicate items by contentItemId
+      const uniqueItems = new Map();
+      
+      // Process items to ensure unique order values
+      scheduleItems.forEach((item, index) => {
+        console.log('Processing item:', item);
+        if (item.contentItemId && !item.contentItemId.startsWith('placeholder')) {
+          uniqueItems.set(item.contentItemId, {
+            id: item.contentItemId,
+            type: item.contentItem?.type || '',
+            duration: item.contentItem?.duration || 20,
+            order: index
+          });
+        } else {
+          console.log('Skipping item with invalid ID:', item.contentItemId);
+        }
       });
+      
+      // Convert map to array
+      const slides = Array.from(uniqueItems.values());
+      
+      console.log('Unique slides to save:', slides);
+      
+      if (slides.length === 0) {
+        console.error('No valid content items to save');
+        setSaveError('No valid content items to save');
+        return;
+      }
+      
+      const payload = { slides };
+      
+      console.log('Saving schedule items with payload:', JSON.stringify(payload, null, 2));
+      console.log('Schedule ID:', resolvedParams.id);
+      
+      const updatedSchedule = await updateSchedule(resolvedParams.id, payload);
+      
+      if (updatedSchedule) {
+        console.log('Schedule updated successfully:', updatedSchedule);
+        // Update original items to reflect saved state
+        setOriginalItems(updatedSchedule.items || []);
+      }
     } catch (error) {
+      console.error('Error saving schedule items:', error);
       setSaveError(error instanceof Error ? error.message : 'Failed to save changes');
     } finally {
       setIsSaving(false);
@@ -360,9 +582,20 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
     setSaveError(null);
 
     try {
-      await updateSchedule(resolvedParams.id, {
+      const updatedSchedule = await updateSchedule(resolvedParams.id, {
         name: name.trim(),
+        description,
+        isActive
       });
+      
+      if (updatedSchedule) {
+        // Update original data to reflect saved state
+        setOriginalData({
+          name: updatedSchedule.name,
+          description: updatedSchedule.description || '',
+          isActive: updatedSchedule.isActive
+        });
+      }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Failed to save changes');
     } finally {
@@ -419,12 +652,20 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
 
   const handleCreateNewItem = () => {
     if (selectedType) {
-      // Navigate to the appropriate content creation page based on type
-      const route = `/screens/content/create/${selectedType.toLowerCase()}`;
-      // For now, show a message
-      alert(`Would navigate to: ${route}\nThis functionality will be implemented next.`);
+      // Use the content creation context to open the modal
+      openContentCreationModal(selectedType, () => {
+        // After successful creation, refresh the content items
+        fetchContentItems();
+      });
     }
   };
+
+  // Fetch content items when initially selecting a type
+  useEffect(() => {
+    if (selectedType) {
+      fetchContentItems();
+    }
+  }, [selectedType]);
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
@@ -445,9 +686,14 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         <Card>
           <CardContent>
             <Stack spacing={3}>
-              <Typography variant="h6">
-                General Settings
-              </Typography>
+              <Box>
+                <Typography variant="h6" component="div" gutterBottom>
+                  General Settings
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Configure the basic settings for this content schedule.
+                </Typography>
+              </Box>
 
               {saveError && (
                 <Alert severity="error" onClose={() => setSaveError(null)}>
@@ -465,12 +711,51 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                 helperText={!name.trim() ? 'Name is required' : ''}
               />
 
+              <TextField
+                label="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                fullWidth
+                multiline
+                rows={3}
+                helperText="Optional description for this schedule"
+              />
+
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Active"
+                />
+                <Tooltip title="When active, this schedule can be assigned to displays">
+                  <IconButton size="small" sx={{ ml: 1, mt: -0.5 }}>
+                    <InfoIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <FormHelperText>
+                  Inactive schedules won't be shown on displays
+                </FormHelperText>
+              </Box>
+
               <Box>
                 <Button
                   variant="contained"
                   onClick={handleSave}
                   disabled={isSaving || !name.trim()}
+                  sx={{
+                    borderRadius: 1.5,
+                    px: 2.5,
+                    py: 0.75,
+                    fontWeight: 500,
+                    boxShadow: 1
+                  }}
                 >
+                  {isSaving ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
               </Box>
@@ -484,17 +769,30 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         <Card>
           <CardContent>
             <Stack spacing={3}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h6">
+              <Box>
+                <Typography variant="h6" component="div" gutterBottom>
                   Schedule Slides
                 </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Add and arrange content items that will be displayed in this schedule. Drag items to change their order.
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   variant="contained"
                   onClick={handleSaveItems}
                   disabled={isSaving}
-                  size="small"
+                  startIcon={isSaving ? <CircularProgress size={20} /> : null}
+                  sx={{
+                    borderRadius: 1.5,
+                    px: 2.5,
+                    py: 0.75,
+                    fontWeight: 500,
+                    boxShadow: 1
+                  }}
                 >
-                  {isSaving ? <CircularProgress size={20} /> : 'Save Order'}
+                  {isSaving ? 'Saving...' : 'Save Order'}
                 </Button>
               </Box>
 
@@ -535,6 +833,17 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
                   fullWidth
                   startIcon={<AddIcon />}
                   onClick={handleOpenTypeModal}
+                  sx={{
+                    borderRadius: 1.5,
+                    py: 1,
+                    fontWeight: 500,
+                    borderStyle: 'dashed',
+                    borderWidth: 2,
+                    '&:hover': {
+                      borderStyle: 'dashed',
+                      borderWidth: 2,
+                    }
+                  }}
                 >
                   Add Content Items
                 </Button>
@@ -552,27 +861,91 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 1,
+            borderRadius: 2,
+            overflow: 'hidden'
           }
         }}
       >
-        <DialogTitle>
-          Choose Content Type
+        <DialogTitle sx={{ 
+          bgcolor: 'primary.main', 
+          color: 'primary.contrastText',
+          py: 2,
+          px: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Typography variant="h6" component="div" fontWeight={600}>
+            Choose Content Type
+          </Typography>
+          <IconButton 
+            edge="end" 
+            color="inherit" 
+            onClick={handleCloseModals}
+            sx={{ color: 'primary.contrastText' }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={3} sx={{ py: 2 }}>
+        <DialogContent sx={{ px: 3, pt: 1.5, pb: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ my: 2 }}>
+            Select the type of content you want to add to your schedule. Each content type has different features and display options.
+          </Typography>
+          <Grid container spacing={3} sx={{ py: 1 }}>
             {Object.values(ContentType).map((type) => (
-              <Grid item xs={6} key={type}>
-                <ContentTypeTile 
-                  type={type} 
+              <Grid item xs={12} sm={6} key={type}>
+                <Paper
+                  elevation={2}
+                  sx={{
+                    p: 3,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 4,
+                      borderColor: 'primary.main',
+                      bgcolor: 'primary.50',
+                    },
+                  }}
                   onClick={() => handleTypeSelection(type)}
-                />
+                >
+                  <Box 
+                    sx={{ 
+                      p: 1.5, 
+                      borderRadius: '50%', 
+                      bgcolor: 'primary.50',
+                      color: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 56,
+                      height: 56,
+                      '& svg': {
+                        display: 'block'
+                      }
+                    }}
+                  >
+                    {React.cloneElement(getContentTypeIcon(type), { sx: { fontSize: 28 } })}
+                  </Box>
+                  <Typography variant="body1" align="center" fontWeight={500}>
+                    {getContentTypeName(type)}
+                  </Typography>
+                </Paper>
               </Grid>
             ))}
           </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModals}>Cancel</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Button onClick={handleCloseModals} variant="outlined" sx={{ borderRadius: 1.5 }}>
+            Cancel
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -580,94 +953,248 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
       <Dialog
         open={isItemsModalOpen}
         onClose={handleCloseModals}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: 1,
+            borderRadius: 2,
+            overflow: 'hidden'
           }
         }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ 
+          bgcolor: 'primary.main', 
+          color: 'primary.contrastText',
+          py: 2,
+          px: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <IconButton 
               edge="start" 
               color="inherit" 
               onClick={handleBackToTypes}
-              sx={{ mr: 1 }}
+              sx={{ mr: 1, color: 'primary.contrastText' }}
             >
               <ArrowBackIcon />
             </IconButton>
-            {selectedType && getContentTypeName(selectedType)}
+            <Typography variant="h6" component="div" fontWeight={600}>
+              {selectedType && getContentTypeName(selectedType)} Content
+            </Typography>
           </Box>
+          <IconButton 
+            edge="end" 
+            color="inherit" 
+            onClick={handleCloseModals}
+            sx={{ color: 'primary.contrastText' }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ my: 2 }}>
+        <DialogContent sx={{ p: 0 }}>
+          <Box sx={{ px: 3, pt: 1.5, pb: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ my: 2 }}>
+              Select the content items you want to add to your schedule. You can select multiple items at once.
+            </Typography>
+            
             {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
                 <CircularProgress />
               </Box>
             ) : filteredContentItems.length === 0 ? (
               <Alert 
                 severity="info" 
+                variant="outlined"
+                sx={{ 
+                  borderRadius: 2,
+                  mt: 2
+                }}
                 action={
                   <Button 
-                    color="inherit" 
+                    color="primary" 
                     size="small" 
+                    variant="contained"
                     onClick={handleCreateNewItem}
+                    sx={{ borderRadius: 1.5 }}
                   >
                     Create New
                   </Button>
                 }
               >
-                No {selectedType && getContentTypeName(selectedType)} content items found.
+                <AlertTitle>No content found</AlertTitle>
+                No {selectedType && getContentTypeName(selectedType)} content items found. Create a new one to get started.
               </Alert>
             ) : (
               <>
-                <List sx={{ width: '100%', maxHeight: '350px', overflow: 'auto' }}>
-                  {filteredContentItems.map((item) => (
-                    <div key={item.id}>
-                      <ListItem disablePadding>
-                        <ListItemButton onClick={() => handleToggleContentItem(item.id)}>
-                          <ListItemIcon>
-                            <Checkbox
-                              edge="start"
-                              checked={selectedContentItems.includes(item.id)}
-                              tabIndex={-1}
-                              disableRipple
-                            />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={item.title}
-                            secondary={`Duration: ${item.duration}s`}
-                          />
-                        </ListItemButton>
-                      </ListItem>
-                      <Divider />
-                    </div>
-                  ))}
-                </List>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  mb: 2
+                }}>
+                  <Typography variant="subtitle2" color="text.primary">
+                    {filteredContentItems.length} items available
+                  </Typography>
                   <Button 
                     variant="outlined" 
                     startIcon={<AddIcon />}
                     onClick={handleCreateNewItem}
+                    size="small"
+                    sx={{ borderRadius: 1.5 }}
                   >
-                    Create New {selectedType && getContentTypeName(selectedType)}
+                    Create New
                   </Button>
                 </Box>
+                
+                <Paper 
+                  variant="outlined" 
+                  sx={{ 
+                    maxHeight: '350px', 
+                    overflow: 'auto',
+                    borderRadius: 2,
+                    mb: 2
+                  }}
+                >
+                  <List disablePadding>
+                    {filteredContentItems.map((item: any, index) => (
+                      <div key={item.id}>
+                        <ListItem 
+                          disablePadding 
+                          secondaryAction={
+                            <Chip 
+                              icon={<TimeIcon sx={{ fontSize: '0.75rem !important' }} />}
+                              label={`${item.duration}s`}
+                              size="small"
+                              sx={{ 
+                                height: '24px',
+                                bgcolor: 'action.hover',
+                                borderRadius: 1,
+                                '& .MuiChip-label': { px: 1, fontSize: '0.75rem' },
+                                '& .MuiChip-icon': { ml: 0.5 }
+                              }}
+                            />
+                          }
+                        >
+                          <ListItemButton 
+                            onClick={() => handleToggleContentItem(item.id)}
+                            sx={{ 
+                              py: 1.5,
+                              '&.Mui-selected': {
+                                bgcolor: 'primary.50',
+                              },
+                              '&.Mui-selected:hover': {
+                                bgcolor: 'primary.100',
+                              }
+                            }}
+                            selected={selectedContentItems.includes(item.id)}
+                          >
+                            <ListItemIcon>
+                              <Checkbox
+                                edge="start"
+                                checked={selectedContentItems.includes(item.id)}
+                                tabIndex={-1}
+                                disableRipple
+                                color="primary"
+                              />
+                            </ListItemIcon>
+                            <Box 
+                              sx={{ 
+                                width: 28, 
+                                height: 28, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                bgcolor: 'action.hover',
+                                color: 'primary.main',
+                                mr: 1.5,
+                                '& svg': {
+                                  display: 'block'
+                                }
+                              }}
+                            >
+                              {React.cloneElement(getContentTypeIcon(item.type), { sx: { fontSize: 16 } })}
+                            </Box>
+                            <ListItemText 
+                              primary={
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                  <Typography variant="body2" fontWeight={selectedContentItems.includes(item.id) ? 600 : 400}>
+                                    {item.title}
+                                  </Typography>
+                                  {(!item.isActive || item.startDate || item.endDate) && (
+                                    <Tooltip
+                                      title={
+                                        <Box>
+                                          {!item.isActive && (
+                                            <Typography variant="caption" sx={{ display: 'block', mb: 1 }}>
+                                              This item is disabled
+                                            </Typography>
+                                          )}
+                                          {(item.startDate || item.endDate) && (
+                                            <>
+                                              <Typography variant="caption" sx={{ display: 'block' }}>
+                                                Start: {formatDate(item.startDate)}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ display: 'block' }}>
+                                                End: {formatDate(item.endDate)}
+                                              </Typography>
+                                            </>
+                                          )}
+                                        </Box>
+                                      }
+                                    >
+                                      <Box component="span" sx={{ display: 'inline-flex', ml: 1 }}>
+                                        {!item.isActive ? (
+                                          <WarningIcon fontSize="small" color="warning" />
+                                        ) : (item.startDate || item.endDate) ? (
+                                          <CalendarIcon fontSize="small" color="info" />
+                                        ) : null}
+                                      </Box>
+                                    </Tooltip>
+                                  )}
+                                </Box>
+                              }
+                              secondary={
+                                <Typography variant="caption" color="text.secondary">
+                                  {item.content?.text ? 
+                                    (item.content.text.length > 60 ? 
+                                      `${item.content.text.substring(0, 60)}...` : 
+                                      item.content.text) : 
+                                    'No preview available'}
+                                </Typography>
+                              }
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                        {index < filteredContentItems.length - 1 && <Divider />}
+                      </div>
+                    ))}
+                  </List>
+                </Paper>
               </>
             )}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseModals}>Cancel</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider', justifyContent: 'space-between' }}>
+          <Button 
+            onClick={handleCloseModals} 
+            variant="outlined"
+            sx={{ borderRadius: 1.5 }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleAddContentItems} 
             variant="contained"
             disabled={selectedContentItems.length === 0}
+            startIcon={selectedContentItems.length > 0 ? <AddIcon /> : null}
+            sx={{ borderRadius: 1.5 }}
           >
-            Add Selected ({selectedContentItems.length})
+            {selectedContentItems.length > 0 ? 
+              `Add Selected (${selectedContentItems.length})` : 
+              'Select Items to Add'}
           </Button>
         </DialogActions>
       </Dialog>

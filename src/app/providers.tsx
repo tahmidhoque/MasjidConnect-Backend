@@ -7,6 +7,8 @@ import theme from '@/lib/theme';
 import { UserProvider } from '@/contexts/UserContext';
 import { UnsavedChangesProvider } from '@/contexts/UnsavedChangesContext';
 import { SnackbarProvider } from '@/contexts/SnackbarContext';
+import { ContentCreationProvider } from '@/components/content/ContentCreationContext';
+import { ContentCreationModal } from '@/components/content/ContentCreationModal';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -16,9 +18,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <UserProvider>
           <UnsavedChangesProvider>
             <SnackbarProvider>
-              {/* <div suppressHydrationWarning> */}
-                {children}
-              {/* </div> */}
+              <ContentCreationProvider>
+                {/* <div suppressHydrationWarning> */}
+                  {children}
+                  <ContentCreationModal />
+                {/* </div> */}
+              </ContentCreationProvider>
             </SnackbarProvider>
           </UnsavedChangesProvider>
         </UserProvider>

@@ -87,6 +87,36 @@ export async function GET(req: NextRequest) {
       }
     });
     
+    // Filter out inactive content items and respect active dates
+    let schedule = screen.schedule;
+    if (schedule) {
+      // Filter items to only include active ones
+      const filteredItems = schedule.items.filter(item => {
+        const contentItem = item.contentItem;
+        
+        // Skip if content item is not active
+        if (!contentItem || !contentItem.isActive) return false;
+        
+        // Check start date if it exists
+        if (contentItem.startDate && new Date(contentItem.startDate) > today) {
+          return false;
+        }
+        
+        // Check end date if it exists
+        if (contentItem.endDate && new Date(contentItem.endDate) < today) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      // Update the schedule with filtered items
+      schedule = {
+        ...schedule,
+        items: filteredItems
+      };
+    }
+    
     // Construct the response with all necessary data
     const response = {
       screen: {
@@ -96,7 +126,7 @@ export async function GET(req: NextRequest) {
         contentConfig: screen.contentConfig
       },
       masjid: screen.masjid,
-      schedule: screen.schedule,
+      schedule: schedule,
       prayerTimes: prayerTimes[0] || null,
       contentOverrides: screen.contentOverrides,
       lastUpdated: new Date()

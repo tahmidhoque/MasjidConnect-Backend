@@ -185,7 +185,11 @@ export default function DashboardPage() {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Add New Screen</DialogTitle>
+        <DialogTitle>
+          <Typography variant="h6" component="div">
+            Add New Screen
+          </Typography>
+        </DialogTitle>
         <DialogContent>
           {pairingError && (
             <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPairingError(null)}>

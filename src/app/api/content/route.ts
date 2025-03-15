@@ -28,6 +28,9 @@ export async function GET() {
       },
     });
 
+    console.log('Content items found:', contentItems.length);
+    console.log('Content item IDs:', contentItems.map(item => item.id));
+
     return NextResponse.json(contentItems);
   } catch (error) {
     console.error('Error in GET /api/content:', error);

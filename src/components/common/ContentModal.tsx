@@ -44,23 +44,28 @@ export function ContentModal({
     >
       <DialogTitle
         sx={{
+          bgcolor: 'primary.main',
+          color: 'primary.contrastText',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
           py: 2,
           px: 3,
           mb: 0,
         }}
       >
-        <Typography variant="h6" component="div">
+        <Typography 
+          variant="h6" 
+          component="div" 
+          fontWeight={600}
+        >
           {title}
         </Typography>
         <IconButton
           aria-label="close"
           onClick={onClose}
           size="small"
+          sx={{ color: 'primary.contrastText' }}
         >
           <CloseIcon />
         </IconButton>
