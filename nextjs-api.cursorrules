@@ -1,0 +1,206 @@
+# Next.js API Routes Rules
+
+## Structure for Next.js App Router API Routes
+
+### Standard Route Handler Example (No Parameters)
+
+```typescript
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(request: Request) {
+  try {
+    // Authentication handling
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Your logic here
+
+    return NextResponse.json({ data: 'your data' });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // Authentication handling
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get request data
+    const data = await request.json();
+
+    // Your logic here
+
+    return NextResponse.json({ data: 'created' }, { status: 201 });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+```
+
+### Dynamic Route Handler Example (With Parameters)
+
+⚠️ **IMPORTANT**: For dynamic routes with parameters (e.g., `/api/content/[id]/route.ts`), always use a Promise type for params:
+
+```typescript
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Extract the dynamic parameter - MUST use await with params
+    const { id } = await params;
+    
+    // Authentication handling
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Your logic here
+
+    return NextResponse.json({ data: 'your data' });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Extract the dynamic parameter - MUST use await with params
+    const { id } = await params;
+    
+    // Authentication handling
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get request data
+    const data = await request.json();
+
+    // Your logic here
+
+    return NextResponse.json({ data: 'updated' });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Extract the dynamic parameter - MUST use await with params
+    const { id } = await params;
+    
+    // Authentication handling
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Your logic here
+
+    return NextResponse.json({ message: 'deleted' });
+  } catch (error) {
+    console.error('Error handling request:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}
+```
+
+## Page Components with Dynamic Parameters
+
+⚠️ **IMPORTANT**: For page components with dynamic parameters (e.g., `/app/screens/content/[id]/page.tsx`), also use a Promise type for params, but use the `use` hook to resolve it:
+
+```typescript
+import { use } from 'react';
+
+export default function DynamicPage({ params }: { params: Promise<{ id: string }> }) {
+  // Use the 'use' hook to resolve the Promise
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
+  
+  // Your component logic here
+  
+  return (
+    <div>
+      <h1>Dynamic Page: {id}</h1>
+      {/* Rest of your component */}
+    </div>
+  );
+}
+```
+
+## Common TypeScript Errors to Avoid
+
+1. **Dynamic Route Parameters**: 
+   - For API routes (`route.ts`): Always use `{ params }: { params: Promise<{ [paramName]: string }> }` and extract with `await params`.
+   - For page components (`page.tsx`): Always use `{ params }: { params: Promise<{ [paramName]: string }> }` and extract with `use(params)`.
+
+2. **Request Typing**: Always type the request parameter as `request: Request` or `req: NextRequest` if using Next.js specific request features.
+
+3. **Response Typing**: Use `NextResponse.json()` for consistent JSON responses with proper status codes.
+
+4. **JSON Handling**: Always use `await request.json()` to parse request body, and wrap in try/catch to handle malformed JSON.
+
+5. **JavaScript to TypeScript**: For improved type safety, consider converting JavaScript API routes to TypeScript. A helper script is available at `scripts/convert-js-to-ts.sh`.
+
+## TypeScript Configuration
+
+A well-configured `tsconfig.json` file is essential for catching type errors early. Here are some recommended settings:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+```
+
+## Building with Type Safety
+
+Always fix TypeScript errors rather than ignoring them. This ensures type safety throughout the application and prevents runtime errors.
+
+If you encounter a build failure due to TypeScript errors, fix the underlying issue rather than suppressing it in the configuration.
+
+Next.js has great TypeScript integration - use it to your advantage! 
