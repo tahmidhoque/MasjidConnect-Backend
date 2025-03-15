@@ -92,12 +92,11 @@ export function AnnouncementForm({ initialData, onSuccess, onCancel }: Announcem
       // Create content object with meta data
       const contentData = {
         text: formData.content,
-        isUrgent: formData.isUrgent
       };
 
       const apiData = {
         title: formData.title,
-        type: formData.type,
+        type: ContentType.ANNOUNCEMENT,
         content: contentData,
         duration: formData.duration,
         isActive: formData.isActive,
@@ -105,17 +104,27 @@ export function AnnouncementForm({ initialData, onSuccess, onCancel }: Announcem
         endDate: formData.endDate ? formData.endDate.toDate() : undefined,
       };
 
+      console.log('Saving announcement:', initialData ? 'UPDATE' : 'CREATE', apiData);
+
       if (initialData) {
         await updateContentItem({ id: initialData.id, ...apiData });
+        console.log('Announcement updated successfully');
       } else {
         await createContentItem(apiData);
+        console.log('Announcement created successfully');
       }
 
       setHasUnsavedChanges(false);
       onSuccess?.();
     } catch (error) {
       console.error('Error saving announcement:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while saving');
+      
+      // Provide more detailed error message
+      if (error instanceof Error) {
+        setError(`Failed to save: ${error.message}`);
+      } else {
+        setError('An unexpected error occurred while saving. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

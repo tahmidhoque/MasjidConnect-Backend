@@ -51,16 +51,25 @@ export async function createContentItem(data: CreateContentItemInput): Promise<C
 
 export async function updateContentItem(data: UpdateContentItemInput): Promise<ContentItemData> {
   const response = await fetch(`/api/content/${data.id}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
   })
+  
   if (!response.ok) {
-    throw new Error('Failed to update content item')
+    // Try to get detailed error message from response
+    try {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update content item');
+    } catch (e) {
+      // If we can't parse the error response, throw a generic error
+      throw new Error(`Failed to update content item (Status: ${response.status})`);
+    }
   }
-  return response.json()
+  
+  return response.json();
 }
 
 export async function deleteContentItem(id: string): Promise<void> {

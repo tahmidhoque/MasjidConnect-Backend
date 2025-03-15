@@ -66,18 +66,45 @@ export async function PUT(
     }
 
     const data = await request.json();
-    const contentItem = await prisma.contentItem.update({
-      where: {
-        id,
-        masjidId: user.masjidId,
-      },
-      data,
-    });
-
-    return NextResponse.json(contentItem);
+    console.log('Updating content item with ID:', id);
+    console.log('Update data:', JSON.stringify(data, null, 2));
+    
+    try {
+      const contentItem = await prisma.contentItem.update({
+        where: {
+          id,
+          masjidId: user.masjidId,
+        },
+        data,
+      });
+      
+      console.log('Content item updated successfully:', contentItem.id);
+      return NextResponse.json(contentItem);
+    } catch (prismaError: any) {
+      console.error('Prisma error updating content item:', prismaError);
+      
+      // Check for specific Prisma errors
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json({ 
+          message: 'Content item not found or does not belong to your masjid' 
+        }, { status: 404 });
+      }
+      
+      // Handle validation errors
+      if (prismaError.code === 'P2002') {
+        return NextResponse.json({ 
+          message: 'Unique constraint violation', 
+          field: prismaError.meta?.target 
+        }, { status: 400 });
+      }
+      
+      throw prismaError; // Re-throw for the outer catch
+    }
   } catch (error) {
     console.error('Error in PUT /api/content/[id]:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      message: error instanceof Error ? error.message : 'Internal Server Error' 
+    }, { status: 500 });
   }
 }
 

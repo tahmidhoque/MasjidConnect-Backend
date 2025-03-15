@@ -382,17 +382,27 @@ export function CustomForm({ initialData, onSuccess, onCancel }: CustomFormProps
         endDate: formData.endDate ? formData.endDate.toDate() : undefined,
       };
 
+      console.log('Saving content item:', initialData ? 'UPDATE' : 'CREATE', apiData);
+
       if (initialData) {
         await updateContentItem({ id: initialData.id, ...apiData });
+        console.log('Content item updated successfully');
       } else {
         await createContentItem(apiData);
+        console.log('Content item created successfully');
       }
 
       setHasUnsavedChanges(false);
       onSuccess?.();
     } catch (error) {
       console.error('Error saving custom content:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while saving');
+      
+      // Provide more detailed error message
+      if (error instanceof Error) {
+        setError(`Failed to save: ${error.message}`);
+      } else {
+        setError('An unexpected error occurred while saving. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
