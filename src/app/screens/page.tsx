@@ -63,6 +63,9 @@ export default function ScreensPage() {
   const [deleting, setDeleting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // New state for modal actions
+  const [modalActions, setModalActions] = useState<React.ReactNode | null>(null);
+
   // Fetch screens
   const fetchMasjidScreens = async () => {
     try {
@@ -156,6 +159,28 @@ export default function ScreensPage() {
     setPairingError(null);
   };
 
+  // Update modal actions when relevant state changes
+  useEffect(() => {
+    setModalActions(
+      <>
+        <Button 
+          variant="outlined" 
+          onClick={handleClosePairingDialog}
+        >
+          Cancel
+        </Button>
+        <Button 
+          variant="contained"
+          onClick={handlePairDevice}
+          disabled={!pairingCode || !newScreenName}
+          startIcon={deleting ? <CircularProgress size={20} /> : null}
+        >
+          Pair Device
+        </Button>
+      </>
+    );
+  }, [pairingCode, newScreenName, deleting]);
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
@@ -237,6 +262,7 @@ export default function ScreensPage() {
         open={pairingDialog} 
         onClose={handleClosePairingDialog}
         title="Add New Screen"
+        actions={modalActions}
       >
         {pairingError && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setPairingError(null)}>
@@ -302,23 +328,6 @@ export default function ScreensPage() {
             </Grid>
           </Grid>
         </FormSection>
-        
-        <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-          <Button 
-            variant="outlined" 
-            onClick={handleClosePairingDialog}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="contained"
-            onClick={handlePairDevice}
-            disabled={!pairingCode || !newScreenName}
-            startIcon={deleting ? <CircularProgress size={20} /> : null}
-          >
-            Pair Device
-          </Button>
-        </Box>
       </ContentModal>
     </Box>
   );

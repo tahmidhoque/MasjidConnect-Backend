@@ -1,0 +1,211 @@
+# Content Types Implementation Guide
+
+This document outlines the implementation details and usage guidelines for creating and managing content types in the Masjid Admin application.
+
+## 1. Overview
+
+The Masjid Admin application supports various content types that can be displayed on screens. Each content type has its own specific data structure, form components, and display logic. This guide provides a standardized approach for implementing new content types.
+
+## 2. Content Type Structure
+
+### Database Schema
+All content types use the `ContentItem` table with the following fields:
+- `id`: Unique identifier
+- `masjidId`: Reference to the masjid
+- `type`: ContentType enum value (e.g., "VERSE_HADITH", "ANNOUNCEMENT", "EVENT", "CUSTOM", "ASMA_AL_HUSNA")
+- `title`: User-provided title for the content
+- `content`: JSON object containing type-specific data
+- `duration`: Display duration in seconds
+- `isActive`: Boolean indicating if the content is active
+- `startDate`: Optional start date for display period
+- `endDate`: Optional end date for display period
+- `createdAt`: Creation timestamp
+- `updatedAt`: Last update timestamp
+
+### Adding a New Content Type
+To add a new content type:
+1. Add the type to the `ContentType` enum in the Prisma schema
+2. Create a migration to update the database schema
+3. Implement the required components and API routes
+
+## 3. Implementation Components
+
+### Form Component
+Create a form component for the content type at `src/components/content/[type-name]-form.tsx`:
+- Implement form fields specific to the content type
+- Use common form components from `@/components/common/FormFields`
+- Handle validation and submission
+- Follow the UI/UX design guidelines
+
+Example structure:
+```tsx
+export function NewContentTypeForm({ 
+  onSuccess, 
+  onCancel, 
+  initialData 
+}: ContentFormProps) {
+  // Form state and handlers
+  // ...
+  
+  return (
+    <Box>
+      <FormSection title="Content Details" description="...">
+        {/* Form fields */}
+      </FormSection>
+      
+      {/* Form actions */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+        <Button variant="outlined" onClick={onCancel}>Cancel</Button>
+        <Button variant="contained" type="submit">Save</Button>
+      </Box>
+    </Box>
+  );
+}
+```
+
+### API Routes
+Create API routes for the content type:
+
+1. **List/Create Route**: `src/app/api/content/[type-name]/route.ts`
+   ```typescript
+   // GET handler for fetching all items of this type
+   export async function GET() {
+     // Authentication and authorization
+     // Query database for items of this type
+     // Return JSON response
+   }
+   
+   // POST handler for creating a new item
+   export async function POST(request: Request) {
+     // Authentication and authorization
+     // Validate request body
+     // Create item in database
+     // Return JSON response
+   }
+   ```
+
+2. Ensure the content type works with the general content routes:
+   - `GET /api/content`: Fetches all content items
+   - `GET /api/content/[id]`: Fetches a specific content item
+   - `PUT /api/content/[id]`: Updates a specific content item
+   - `DELETE /api/content/[id]`: Deletes a specific content item
+
+### Display Page
+Create a page for managing the content type at `src/app/screens/content/[type-name]/page.tsx`:
+- Use the `ContentTypeTable` component for displaying content items
+- Implement handlers for creating, editing, and deleting items
+- Follow the UI/UX design guidelines for page layout
+
+Example structure:
+```tsx
+export default function ContentTypePage() {
+  // State and handlers
+  // ...
+  
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Breadcrumb navigation */}
+      {/* Page header */}
+      {/* Content table */}
+      <ContentTypeTable
+        items={items}
+        isLoading={isLoading}
+        title="Content Type Title"
+        subtitle="Manage and edit your content"
+        emptyMessage="No content items found. Create your first one to get started."
+        onAdd={handleCreateItem}
+        onEdit={handleEditItem}
+        onDelete={handleDeleteItem}
+        onRefresh={fetchItems}
+        getItemId={(item) => item.id}
+        columns={columns}
+      />
+    </Container>
+  );
+}
+```
+
+### Navigation
+Add the content type to the navigation menu in `src/lib/constants/menu-items.tsx`:
+```typescript
+{
+  title: 'Content Type Name',
+  path: '/screens/content/[type-name]',
+  icon: <TypeIcon />,
+}
+```
+
+### Content Creation Modal
+Update the `ContentCreationModal` component to support the new content type:
+```typescript
+// In src/components/content/ContentCreationModal.tsx
+case ContentType.NEW_TYPE:
+  return (
+    <NewContentTypeForm
+      onSuccess={handleSuccess}
+      onCancel={closeContentCreationModal}
+    />
+  );
+```
+
+## 4. Content Type Interface
+
+Define a TypeScript interface for the content type:
+```typescript
+interface ContentTypeData {
+  // Type-specific properties
+  // ...
+}
+
+interface ContentTypeItem {
+  id: string;
+  title: string;
+  content: ContentTypeData;
+  duration: number;
+  isActive: boolean;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+## 5. Content Schedule Integration
+
+Ensure the content type works with the content schedule system:
+- Content items should be selectable in the schedule creation/editing UI
+- Content items should display correctly in the schedule preview
+- Content items should be rendered correctly on screens
+
+## 6. Display Rendering
+
+Implement the display rendering logic for the content type:
+- Create a component for rendering the content on screens
+- Handle any special styling or layout requirements
+- Ensure the content is displayed correctly on different screen sizes and orientations
+
+## 7. Testing
+
+Test the content type implementation:
+- Create, edit, and delete content items
+- Add content items to schedules
+- View content items on screens
+- Test with different data inputs and edge cases
+
+## 8. Documentation
+
+Document the content type:
+- Update this guide with any type-specific information
+- Add examples and usage guidelines
+- Document any special considerations or limitations
+
+## 9. Example Content Types
+
+The application includes the following content types:
+- **Verse/Hadith**: Religious verses and hadith
+- **Announcements**: Masjid announcements
+- **Events**: Upcoming events
+- **Custom Content**: Custom HTML/text content
+- **Asma Al-Husna**: 99 Names of Allah
+
+Each content type follows this implementation pattern with type-specific customizations. 

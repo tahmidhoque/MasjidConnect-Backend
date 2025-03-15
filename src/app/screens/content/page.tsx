@@ -20,28 +20,45 @@ import AddIcon from '@mui/icons-material/Add';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import Image from 'next/image';
 import { useContentSchedules } from '@/lib/hooks/use-content-schedules';
 import PageHeader from '@/components/layouts/page-header';
+
+// Custom Asma Al-Husna icon component
+const AsmaAlHusnaIcon = () => (
+  <div style={{ position: 'relative', width: 20, height: 20 }}>
+    <Image 
+      src="/icons/asma-al-husna.svg" 
+      alt="99 Names of Allah" 
+      width={20} 
+      height={20}
+      style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(37%) saturate(1254%) hue-rotate(182deg) brightness(96%) contrast(96%)' }} // Makes the SVG #0A2647 color
+    />
+  </div>
+);
 
 // Content type constants
 const CONTENT_TYPES = {
   VERSE_HADITH: 'VERSE_HADITH',
   ANNOUNCEMENT: 'ANNOUNCEMENT',
-  EVENT: 'EVENT'
+  EVENT: 'EVENT',
+  ASMA_AL_HUSNA: 'ASMA_AL_HUSNA'
 } as const;
 
 // Content type display names
 const CONTENT_TYPE_NAMES = {
   VERSE_HADITH: 'Verse/Hadith',
   ANNOUNCEMENT: 'Announcement',
-  EVENT: 'Event'
+  EVENT: 'Event',
+  ASMA_AL_HUSNA: '99 Names of Allah'
 } as const;
 
 // Content type icons mapping
 const CONTENT_TYPE_ICONS = {
   VERSE_HADITH: <AutoStoriesIcon sx={{ fontSize: 20 }} />,
   ANNOUNCEMENT: <CampaignIcon sx={{ fontSize: 20 }} />,
-  EVENT: <EventNoteIcon sx={{ fontSize: 20 }} />
+  EVENT: <EventNoteIcon sx={{ fontSize: 20 }} />,
+  ASMA_AL_HUSNA: <AsmaAlHusnaIcon />
 } as const;
 
 interface TabPanelProps {

@@ -124,6 +124,7 @@ export default function VerseHadithPage() {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [modalActions, setModalActions] = useState<React.ReactNode | null>(null);
   
   const { showSnackbar } = useSnackbar();
   const { setHasUnsavedChanges } = useUnsavedChanges();
@@ -831,6 +832,7 @@ export default function VerseHadithPage() {
         open={modalOpen}
         onClose={handleCloseModal}
         title={editingItem ? 'Edit Verse/Hadith' : 'Add New Verse/Hadith'}
+        actions={modalActions}
       >
         <VerseHadithForm
           initialData={editingItem ? {
@@ -848,6 +850,7 @@ export default function VerseHadithPage() {
             fetchItems();
           }}
           onCancel={handleCloseModal}
+          setFormActions={setModalActions}
         />
       </ContentModal>
 

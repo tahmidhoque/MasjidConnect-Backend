@@ -31,6 +31,7 @@ enum ContentType {
   ANNOUNCEMENT
   EVENT
   CUSTOM
+  ASMA_AL_HUSNA
 }
 
 model User {

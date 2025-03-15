@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   IconButton,
   Typography,
   Box,
@@ -16,6 +17,7 @@ interface ContentModalProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  actions?: React.ReactNode;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ContentModal({
   title,
   children,
   maxWidth = 'md',
+  actions,
 }: ContentModalProps) {
   return (
     <Dialog
@@ -39,6 +42,9 @@ export function ContentModal({
         sx: {
           borderRadius: '12px',
           overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: '90vh',
         }
       }}
     >
@@ -70,9 +76,33 @@ export function ContentModal({
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ p: 0 }}>
+      <DialogContent 
+        sx={{ 
+          p: 0, 
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          flexGrow: 1,
+        }}
+      >
         {children}
       </DialogContent>
+      {actions && (
+        <>
+          <Divider />
+          <DialogActions 
+            sx={{ 
+              p: 2, 
+              justifyContent: 'flex-end',
+              bgcolor: 'background.paper',
+              borderTop: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            {actions}
+          </DialogActions>
+        </>
+      )}
     </Dialog>
   );
 } 

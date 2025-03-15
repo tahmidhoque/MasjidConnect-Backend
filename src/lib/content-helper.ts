@@ -10,6 +10,7 @@ export function getContentTypeForPrisma(type: string): string {
     'ANNOUNCEMENT': 'ANNOUNCEMENT',
     'EVENT': 'EVENT',
     'CUSTOM': 'CUSTOM',
+    'ASMA_AL_HUSNA': 'ASMA_AL_HUSNA',
   };
   
   return contentTypeMap[type] || type;
@@ -34,6 +35,7 @@ export function getReadableContentType(contentType: string): string {
     'ANNOUNCEMENT': 'Announcement',
     'EVENT': 'Event',
     'CUSTOM': 'Custom',
+    'ASMA_AL_HUSNA': '99 Names of Allah',
   };
   
   return typeMap[contentType] || contentType;

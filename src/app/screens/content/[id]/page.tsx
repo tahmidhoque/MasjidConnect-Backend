@@ -50,6 +50,8 @@ import {
   CalendarMonth as CalendarIcon,
   Warning as WarningIcon,
   Close as CloseIcon,
+  MenuBook as MenuBookIcon,
+  Language as LanguageIcon,
 } from '@mui/icons-material';
 import { useContentSchedules, ContentScheduleItem } from '@/lib/hooks/use-content-schedules';
 import {
@@ -73,6 +75,7 @@ import { getContentItems } from '@/lib/services/content';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
 import { format } from 'date-fns';
 import { useContentCreation } from '@/components/content/ContentCreationContext';
+import Image from 'next/image';
 
 // Define content types for filtering
 enum ContentType {
@@ -80,6 +83,7 @@ enum ContentType {
   ANNOUNCEMENT = 'ANNOUNCEMENT',
   EVENT = 'EVENT',
   CUSTOM = 'CUSTOM',
+  ASMA_AL_HUSNA = 'ASMA_AL_HUSNA',
 }
 
 // Content item interface
@@ -120,6 +124,19 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+// Custom Asma Al-Husna icon component
+const AsmaAlHusnaIcon = ({ sx = {} }: { sx?: React.CSSProperties }) => (
+  <div style={{ position: 'relative', width: sx.fontSize || 16, height: sx.fontSize || 16 }}>
+    <Image 
+      src="/icons/asma-al-husna.svg" 
+      alt="99 Names of Allah" 
+      width={Number(sx.fontSize) || 16}
+      height={Number(sx.fontSize) || 16}
+      style={{ filter: 'brightness(0) saturate(100%) invert(8%) sepia(37%) saturate(1254%) hue-rotate(182deg) brightness(96%) contrast(96%)' }} // Makes the SVG #0A2647 color
+    />
+  </div>
+);
+
 // Get content type icon
 function getContentTypeIcon(type: string) {
   const iconStyle = { fontSize: 16 };
@@ -133,6 +150,8 @@ function getContentTypeIcon(type: string) {
       return <EventIcon sx={iconStyle} />;
     case ContentType.CUSTOM:
       return <CustomIcon sx={iconStyle} />;
+    case ContentType.ASMA_AL_HUSNA:
+      return <AsmaAlHusnaIcon sx={iconStyle} />;
     default:
       return <CustomIcon sx={iconStyle} />;
   }
@@ -148,9 +167,11 @@ function getContentTypeName(type: string): string {
     case ContentType.EVENT:
       return 'Event';
     case ContentType.CUSTOM:
-      return 'Custom';
+      return 'Custom Content';
+    case ContentType.ASMA_AL_HUSNA:
+      return '99 Names of Allah';
     default:
-      return type.replace('_', ' ');
+      return 'Unknown';
   }
 }
 
@@ -654,7 +675,7 @@ export default function PlaylistEdit({ params }: { params: Promise<{ id: string 
   const handleCreateNewItem = () => {
     if (selectedType) {
       // Use the content creation context to open the modal
-      openContentCreationModal(selectedType, () => {
+      openContentCreationModal(selectedType as any, () => {
         // After successful creation, refresh the content items
         fetchContentItems();
       });

@@ -83,6 +83,7 @@ export default function EventPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalActions, setModalActions] = useState<React.ReactNode | null>(null);
   
   const { showSnackbar } = useSnackbar();
   const { setHasUnsavedChanges } = useUnsavedChanges();
@@ -314,6 +315,7 @@ export default function EventPage() {
         open={modalOpen}
         onClose={handleCloseModal}
         title={editingItem ? 'Edit Event' : 'Create Event'}
+        actions={modalActions}
       >
         <EventForm
           initialData={editingItem ? {
@@ -339,6 +341,7 @@ export default function EventPage() {
             showSnackbar(editingItem ? 'Event updated successfully' : 'Event created successfully', 'success');
           }}
           onCancel={handleCloseModal}
+          setFormActions={setModalActions}
         />
       </ContentModal>
     </Container>

@@ -24,9 +24,10 @@ interface EventFormProps {
   initialData?: ContentItemData;
   onSuccess?: () => void;
   onCancel?: () => void;
+  setFormActions?: (actions: React.ReactNode) => void;
 }
 
-export function EventForm({ initialData, onSuccess, onCancel }: EventFormProps) {
+export function EventForm({ initialData, onSuccess, onCancel, setFormActions }: EventFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { setHasUnsavedChanges } = useUnsavedChanges();
@@ -123,11 +124,42 @@ export function EventForm({ initialData, onSuccess, onCancel }: EventFormProps) 
     }
   };
 
+  // Create form actions
+  useEffect(() => {
+    if (setFormActions) {
+      setFormActions(
+        <>
+          <Button
+            variant="outlined"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="event-form"
+            variant="contained"
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={20} /> : null}
+          >
+            {isLoading ? 'Saving...' : initialData ? 'Update Event' : 'Create Event'}
+          </Button>
+        </>
+      );
+    }
+  }, [isLoading, initialData, onCancel, setFormActions]);
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box component="form" onSubmit={handleSubmit}>
+      <Box 
+        component="form" 
+        id="event-form"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         {error && (
-          <Alert severity="error" sx={{ mx: 3, mt: 3, mb: 0 }} onClose={() => setError(null)}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
@@ -240,24 +272,6 @@ export function EventForm({ initialData, onSuccess, onCancel }: EventFormProps) 
             </Grid>
           </Grid>
         </FormSection>
-
-        <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Button
-            variant="outlined"
-            onClick={onCancel}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={20} /> : null}
-          >
-            {isLoading ? 'Saving...' : initialData ? 'Update Event' : 'Create Event'}
-          </Button>
-        </Box>
       </Box>
     </LocalizationProvider>
   );

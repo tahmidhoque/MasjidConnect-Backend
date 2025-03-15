@@ -11,8 +11,9 @@ import {
   MenuBook as VerseIcon,
   Announcement as AnnouncementIcon,
   Event as EventIcon,
-  Code as CustomIcon
+  Code as CustomIcon,
 } from '@mui/icons-material';
+import Image from 'next/image';
 
 // Define types
 export interface MenuItem {
@@ -23,6 +24,19 @@ export interface MenuItem {
   children?: MenuItem[];
   divider?: boolean;
 }
+
+// Custom Asma Al-Husna icon component
+const AsmaAlHusnaIcon = () => (
+  <div style={{ position: 'relative', width: 24, height: 24 }}>
+    <Image 
+      src="/icons/asma-al-husna.svg" 
+      alt="99 Names of Allah" 
+      width={24} 
+      height={24}
+      style={{ filter: 'brightness(0) invert(1)' }} // Makes the SVG white to match other icons
+    />
+  </div>
+);
 
 // Main menu items
 // Note: General Settings feature is temporarily disabled and will be implemented in a future update
@@ -72,6 +86,11 @@ export const mainMenuItems: MenuItem[] = [
         title: 'Custom Content',
         path: '/screens/content/custom',
         icon: <CustomIcon />,
+      },
+      {
+        title: '99 Names of Allah',
+        path: '/screens/content/asma_al_husna',
+        icon: <AsmaAlHusnaIcon />,
       },
     ]
   },

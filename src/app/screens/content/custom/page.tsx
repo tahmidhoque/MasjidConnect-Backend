@@ -195,6 +195,7 @@ export default function CustomContentPage() {
     isActive: true,
   });
   const [originalData, setOriginalData] = useState<typeof formData | null>(null);
+  const [modalActions, setModalActions] = useState<React.ReactNode | null>(null);
   
   const { setHasUnsavedChanges } = useUnsavedChanges();
 
@@ -468,6 +469,7 @@ export default function CustomContentPage() {
         open={modalOpen}
         onClose={handleCloseModal}
         title={editingItem ? 'Edit Custom Content' : 'Add Custom Content'}
+        actions={modalActions}
       >
         <CustomForm
           initialData={editingItem ? {
@@ -490,6 +492,7 @@ export default function CustomContentPage() {
             fetchItems();
           }}
           onCancel={handleCloseModal}
+          setFormActions={setModalActions}
         />
       </ContentModal>
     </Box>
