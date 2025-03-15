@@ -5,6 +5,7 @@ import { Breadcrumbs as MuiBreadcrumbs, Typography, Box } from '@mui/material';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import HomeIcon from '@mui/icons-material/Home';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 // Define the structure for a breadcrumb item
 export interface BreadcrumbItem {
@@ -59,7 +60,19 @@ export default function Breadcrumbs({ items, showHome = true, sx }: BreadcrumbsP
   
   return (
     <Box sx={{ mb: 2, ...sx }}>
-      <MuiBreadcrumbs aria-label="breadcrumb">
+      <MuiBreadcrumbs 
+        aria-label="breadcrumb"
+        separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.disabled', fontSize: '1rem' }} />}
+        sx={{ 
+          '& .MuiBreadcrumbs-ol': { 
+            alignItems: 'center' 
+          },
+          '& .MuiBreadcrumbs-li': {
+            color: 'text.secondary',
+            fontSize: '0.875rem'
+          }
+        }}
+      >
         {breadcrumbs.map((item, index) => {
           const isLast = index === breadcrumbs.length - 1;
           
@@ -67,35 +80,45 @@ export default function Breadcrumbs({ items, showHome = true, sx }: BreadcrumbsP
             return (
               <Typography 
                 key={index} 
-                color="text.primary" 
+                color="text.secondary" 
+                variant="body2"
                 sx={{ 
                   display: 'flex', 
                   alignItems: 'center',
-                  fontWeight: isLast ? 'medium' : 'normal'
                 }}
               >
-                {item.icon && <Box component="span" sx={{ mr: 0.5, display: 'flex', alignItems: 'center' }}>{item.icon}</Box>}
+                {item.icon && <Box component="span" sx={{ mr: 0.5, display: 'flex', alignItems: 'center', opacity: 0.7 }}>{item.icon}</Box>}
                 {item.label}
               </Typography>
             );
           }
           
           return (
-            <Link key={index} href={item.href} passHref>
+            <Box 
+              key={index} 
+              component={Link} 
+              href={item.href}
+              sx={{ 
+                color: 'text.secondary',
+                textDecoration: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'color 0.2s ease',
+                '&:hover': { color: 'text.primary' },
+              }}
+            >
+              {item.icon && (
+                <Box sx={{ mr: 0.5, display: 'flex', alignItems: 'center', opacity: 0.7 }}>
+                  {item.icon}
+                </Box>
+              )}
               <Typography 
-                color="inherit" 
-                sx={{ 
-                  textDecoration: 'none', 
-                  '&:hover': { textDecoration: 'underline' }, 
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
+                variant="body2"
+                component="span"
               >
-                {item.icon && <Box component="span" sx={{ mr: 0.5, display: 'flex', alignItems: 'center' }}>{item.icon}</Box>}
                 {item.label}
               </Typography>
-            </Link>
+            </Box>
           );
         })}
       </MuiBreadcrumbs>
@@ -113,7 +136,7 @@ export function generateBreadcrumbs(pathname: string, showHome = true): Breadcru
     breadcrumbs.push({
       label: 'Home',
       href: '/',
-      icon: <HomeIcon fontSize="small" />
+      icon: <HomeIcon fontSize="small" sx={{ fontSize: '1rem' }} />
     });
   }
   
