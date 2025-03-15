@@ -30,6 +30,19 @@ export async function POST(req: NextRequest) {
       return applyCorsHeaders(req, errorResponse);
     }
     
+    // Check if the screen exists
+    const existingScreen = await prisma.screen.findUnique({
+      where: { id: screenId }
+    });
+    
+    if (!existingScreen) {
+      const errorResponse = NextResponse.json(
+        { error: 'Screen not found', code: 'SCREEN_DELETED' }, 
+        { status: 404 }
+      );
+      return applyCorsHeaders(req, errorResponse);
+    }
+    
     // Get status information from request body
     const { status, metrics } = await req.json();
     
@@ -43,7 +56,25 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    const successResponse = NextResponse.json({ success: true });
+    // Return the screen's current configuration
+    const screenWithSchedule = await prisma.screen.findUnique({
+      where: { id: screenId },
+      include: {
+        schedule: true,
+        masjid: {
+          select: {
+            id: true,
+            name: true,
+            timezone: true,
+          }
+        }
+      }
+    });
+    
+    const successResponse = NextResponse.json({ 
+      success: true,
+      screen: screenWithSchedule
+    });
     return applyCorsHeaders(req, successResponse);
   } catch (error) {
     console.error('Error updating screen heartbeat:', error);

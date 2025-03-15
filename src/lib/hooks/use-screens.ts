@@ -66,6 +66,72 @@ export function useScreens() {
     }
   }, []);
 
+  // Update a screen
+  const updateScreen = useCallback(async (
+    screenId: string, 
+    data: { name: string; location?: string; orientation?: 'LANDSCAPE' | 'PORTRAIT' }
+  ) => {
+    try {
+      const response = await fetch('/api/screens', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: screenId,
+          ...data
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to update screen: ${response.statusText}`);
+      }
+      
+      const updatedScreen = await response.json();
+      
+      // Update the screens list with the updated screen
+      setScreens(prevScreens => 
+        prevScreens.map(screen => 
+          screen.id === screenId ? { ...screen, ...updatedScreen } : screen
+        )
+      );
+      
+      toast.success(`Screen "${updatedScreen.name}" updated successfully`);
+      
+      return updatedScreen;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update screen';
+      toast.error(message);
+      throw err;
+    }
+  }, []);
+
+  // Delete a screen
+  const deleteScreen = useCallback(async (screenId: string) => {
+    try {
+      const response = await fetch(`/api/screens/${screenId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to delete screen: ${response.statusText}`);
+      }
+      
+      // Remove the screen from the list
+      setScreens(prevScreens => prevScreens.filter(screen => screen.id !== screenId));
+      
+      toast.success('Screen deleted successfully');
+      
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete screen';
+      toast.error(message);
+      throw err;
+    }
+  }, []);
+
   // Load screens on mount
   useEffect(() => {
     fetchScreens();
@@ -77,5 +143,7 @@ export function useScreens() {
     error,
     fetchScreens,
     assignSchedule,
+    updateScreen,
+    deleteScreen,
   };
 } 

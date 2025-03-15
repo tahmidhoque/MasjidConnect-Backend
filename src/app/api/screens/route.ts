@@ -77,7 +77,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, name } = await req.json();
+    const { id, name, location, orientation } = await req.json();
     if (!id || !name) {
       return NextResponse.json(
         { error: 'Screen ID and name are required' },
@@ -99,7 +99,11 @@ export async function PUT(req: Request) {
 
     const screen = await prisma.screen.update({
       where: { id },
-      data: { name },
+      data: { 
+        name,
+        location,
+        orientation: orientation || existingScreen.orientation,
+      },
     });
 
     return NextResponse.json(screen);

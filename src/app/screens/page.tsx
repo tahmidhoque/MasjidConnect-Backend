@@ -1,185 +1,120 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
   Card,
-  CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
-  IconButton,
-  TextField,
   Typography,
-  Chip,
-  Stack,
   Alert,
-  Tooltip,
   CircularProgress,
-  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   Add as AddIcon,
-  QrCode2 as QrCodeIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Link as LinkIcon,
-  LinkOff as LinkOffIcon,
   ScreenShare as ScreenIcon,
-  LocationOn as LocationIcon,
-  Badge as BadgeIcon,
 } from '@mui/icons-material';
-import { formatLastSeen, isScreenOnline } from '@/lib/screen-utils';
-import { ContentModal } from '@/components/common/ContentModal';
-import { FormSection } from '@/components/common/FormSection';
-import { FormTextField } from '@/components/common/FormFields';
-
-interface Screen {
-  id: string;
-  name: string;
-  status: 'ONLINE' | 'OFFLINE' | 'PAIRING';
-  deviceType?: string;
-  location?: string;
-  orientation: 'LANDSCAPE' | 'PORTRAIT';
-  lastSeen?: Date;
-  pairingCode?: string;
-  pairingCodeExpiry?: Date;
-}
+import { useScreens } from '@/lib/hooks/use-screens';
+import { useRouter } from 'next/navigation';
+import ScreenCard from '@/components/screens/ScreenCard';
+import PageHeader from '@/components/layouts/page-header';
+import ScreenEditForm from '@/components/screens/ScreenEditForm';
+import ScreenPairingForm from '@/components/screens/ScreenPairingForm';
 
 export default function ScreensPage() {
-  const [screens, setScreens] = useState<Screen[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pairingError, setPairingError] = useState<string | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedScreen, setSelectedScreen] = useState<Screen | null>(null);
-  const [newScreenName, setNewScreenName] = useState('');
-  const [pairingDialog, setPairingDialog] = useState(false);
-  const [pairingCode, setPairingCode] = useState('');
-  const [location, setLocation] = useState('');
-  const [deleting, setDeleting] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-
-  // New state for modal actions
-  const [modalActions, setModalActions] = useState<React.ReactNode | null>(null);
-
-  // Fetch screens
-  const fetchMasjidScreens = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/screens');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch screens');
-      }
-      
-      const data = await response.json();
-      setScreens(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching screens:', error);
-      setError('Failed to load screens. Please try again.');
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMasjidScreens();
-  }, []);
+  const router = useRouter();
+  const { screens, loading, error, fetchScreens, updateScreen, deleteScreen } = useScreens();
+  
+  const [openPairingDialog, setOpenPairingDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedScreen, setSelectedScreen] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle pairing
-  const handlePairDevice = async () => {
+  const handlePairDevice = async (data: { pairingCode: string; name: string; location?: string }) => {
     try {
-      setPairingError(null);
       const response = await fetch('/api/screens/pair', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pairingCode,
-          name: newScreenName,
-          location,
-        }),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to pair device');
+        throw new Error(responseData.error || 'Failed to pair device');
       }
       
-      await fetchMasjidScreens();
-      handleClosePairingDialog();
+      await fetchScreens();
     } catch (error) {
       console.error('Error pairing device:', error);
-      setPairingError(error instanceof Error ? error.message : 'Failed to pair device');
+      throw error;
+    }
+  };
+
+  // Update screen
+  const handleUpdateScreen = async (data: { name: string; location?: string; orientation: 'LANDSCAPE' | 'PORTRAIT' }) => {
+    if (!selectedScreen) return;
+    
+    try {
+      await updateScreen(selectedScreen.id, data);
+    } catch (error) {
+      console.error('Error updating screen:', error);
+      throw error;
     }
   };
 
   // Delete screen
-  const deleteScreen = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this screen?')) {
-      return;
-    }
+  const handleDeleteScreen = async () => {
+    if (!selectedScreen) return;
     
     try {
-      setDeleting(true);
-      const response = await fetch(`/api/screens/${id}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete screen');
-      }
-      
-      setScreens(prev => prev.filter(screen => screen.id !== id));
-      setDeleting(false);
-      setSuccess('Screen deleted successfully');
+      setIsSubmitting(true);
+      await deleteScreen(selectedScreen.id);
+      handleCloseDeleteDialog();
     } catch (error) {
       console.error('Error deleting screen:', error);
-      setError('Failed to delete screen. Please try again.');
-      setDeleting(false);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleOpenPairingDialog = () => {
-    setNewScreenName('');
-    setLocation('');
-    setPairingCode('');
-    setPairingError(null);
-    setPairingDialog(true);
+    setOpenPairingDialog(true);
   };
 
   const handleClosePairingDialog = () => {
-    setPairingDialog(false);
-    setNewScreenName('');
-    setLocation('');
-    setPairingCode('');
-    setPairingError(null);
+    setOpenPairingDialog(false);
   };
 
-  // Update modal actions when relevant state changes
-  useEffect(() => {
-    setModalActions(
-      <>
-        <Button 
-          variant="outlined" 
-          onClick={handleClosePairingDialog}
-        >
-          Cancel
-        </Button>
-        <Button 
-          variant="contained"
-          onClick={handlePairDevice}
-          disabled={!pairingCode || !newScreenName}
-          startIcon={deleting ? <CircularProgress size={20} /> : null}
-        >
-          Pair Device
-        </Button>
-      </>
-    );
-  }, [pairingCode, newScreenName, deleting]);
+  const handleOpenEditDialog = (screen: any) => {
+    setSelectedScreen(screen);
+    setOpenEditDialog(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setOpenEditDialog(false);
+    setSelectedScreen(null);
+  };
+
+  const handleOpenDeleteDialog = (screen: any) => {
+    setSelectedScreen(screen);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false);
+    setSelectedScreen(null);
+  };
+
+  const handleViewScreenContent = (screenId: string) => {
+    router.push(`/screens/content?screenId=${screenId}`);
+  };
 
   if (loading) {
     return (
@@ -192,9 +127,9 @@ export default function ScreensPage() {
   return (
     <Box>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4" fontWeight="bold">
-          Screens
-        </Typography>
+        <PageHeader
+          title="Screens"
+        />
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -205,130 +140,94 @@ export default function ScreensPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => {}}>
           {error}
         </Alert>
       )}
 
-      <Grid container spacing={3}>
-        {screens.map((screen) => (
-          <Grid item xs={12} md={6} lg={4} key={screen.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <ScreenIcon sx={{ mr: 1 }} />
-                  <Typography variant="h6" sx={{ flex: 1 }}>
-                    {screen.name}
-                  </Typography>
-                  <IconButton size="small" onClick={() => deleteScreen(screen.id)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
+      {screens.length === 0 ? (
+        <Card sx={{ p: 4, textAlign: 'center' }}>
+          <ScreenIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" gutterBottom>
+            No Screens Found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            You haven't added any screens yet. Add a screen to start displaying content.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenPairingDialog}
+          >
+            Add Screen
+          </Button>
+        </Card>
+      ) : (
+        <Grid container spacing={3}>
+          {screens.map((screen) => (
+            <Grid item xs={12} md={6} lg={4} key={screen.id}>
+              <ScreenCard
+                screen={screen}
+                onEdit={handleOpenEditDialog}
+                onDelete={handleOpenDeleteDialog}
+                onViewContent={handleViewScreenContent}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
-                <Stack spacing={1}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Chip
-                      size="small"
-                      label={screen.status}
-                      color={screen.status === 'ONLINE' ? 'success' : 'default'}
-                    />
-                    {screen.deviceType && (
-                      <Chip size="small" label={screen.deviceType} />
-                    )}
-                    <Chip
-                      size="small"
-                      label={screen.orientation?.toLowerCase() || 'landscape'}
-                    />
-                  </Box>
-
-                  {screen.location && (
-                    <Typography variant="body2" color="text.secondary">
-                      📍 {screen.location}
-                    </Typography>
-                  )}
-
-                  <Typography variant="body2" color="text.secondary">
-                    Last seen: {formatLastSeen(screen.lastSeen ? new Date(screen.lastSeen) : null)}
-                  </Typography>
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Pair New Screen Dialog */}
-      <ContentModal 
-        open={pairingDialog} 
+      {/* Pairing Dialog */}
+      <ScreenPairingForm
+        open={openPairingDialog}
         onClose={handleClosePairingDialog}
-        title="Add New Screen"
-        actions={modalActions}
+        onSubmit={handlePairDevice}
+      />
+
+      {/* Edit Screen Dialog */}
+      <ScreenEditForm
+        open={openEditDialog}
+        onClose={handleCloseEditDialog}
+        onSubmit={handleUpdateScreen}
+        screen={selectedScreen}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        maxWidth="sm"
+        fullWidth
       >
-        {pairingError && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setPairingError(null)}>
-            {pairingError}
-          </Alert>
-        )}
-        
-        <FormSection
-          title="Pairing Information"
-          description="Enter the pairing code shown on your display screen and provide a name for this screen"
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <FormTextField
-                autoFocus
-                label="Pairing Code"
-                value={pairingCode}
-                onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
-                required
-                helperText="Enter the 6-digit code displayed on your screen"
-                tooltip="This code is used to securely connect your screen to this admin panel"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <QrCodeIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormTextField
-                label="Screen Name"
-                value={newScreenName}
-                onChange={(e) => setNewScreenName(e.target.value)}
-                required
-                helperText="Give this screen a descriptive name"
-                tooltip="A name that helps you identify this screen, e.g., 'Main Prayer Hall'"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <BadgeIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormTextField
-                label="Location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                helperText="Optional: Specify where this screen is located"
-                tooltip="The physical location of this screen, e.g., 'First Floor', 'Entrance Hall'"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LocationIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-          </Grid>
-        </FormSection>
-      </ContentModal>
+        <DialogTitle sx={{ bgcolor: 'error.main', color: 'error.contrastText' }}>
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <DialogContentText>
+            Are you sure you want to delete the screen "{selectedScreen?.name}"? This action cannot be undone.
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 2, fontWeight: 'bold' }}>
+            Warning: This will permanently remove the screen from your masjid and any content assignments.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={handleCloseDeleteDialog}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteScreen}
+            color="error"
+            variant="contained"
+            disabled={isSubmitting}
+            startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
+          >
+            {isSubmitting ? 'Deleting...' : 'Delete Screen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 } 
