@@ -14,7 +14,6 @@ import {
   Tooltip,
   CircularProgress,
   Divider,
-  Alert,
   InputAdornment,
   Chip,
   Container,
@@ -40,20 +39,29 @@ import { EventForm } from '@/components/content/event-form';
 import { ContentType } from '@prisma/client';
 import { ContentItemData } from '@/lib/services/content';
 import { ContentModal } from '@/components/common/ContentModal';
+import CustomAlert from '@/components/ui/CustomAlert';
+import StatusIndicator, { StatusType } from '@/components/ui/StatusIndicator';
 
-// Custom status chip component
+// Custom status chip component for event status
 interface StatusChipProps {
   label: string;
   color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning';
 }
 
 const StatusChip: React.FC<StatusChipProps> = ({ label, color }) => {
+  // Map the color and label to a status type
+  const getStatusType = (): StatusType => {
+    if (label === 'Active' || label === 'Yes') return 'ACTIVE';
+    if (label === 'Inactive' || label === 'No') return 'INACTIVE';
+    if (color === 'success') return 'ACTIVE';
+    if (color === 'error') return 'INACTIVE';
+    return label === 'Online' ? 'ONLINE' : 'OFFLINE';
+  };
+  
   return (
-    <Chip
-      label={label}
-      color={color}
+    <StatusIndicator 
+      status={getStatusType()} 
       size="small"
-      sx={{ minWidth: '80px' }}
     />
   );
 };
@@ -280,9 +288,9 @@ export default function EventPage() {
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
+          <CustomAlert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+            <Typography variant="body2">{error}</Typography>
+          </CustomAlert>
         )}
         
         <Box sx={{ mb: 3 }}>
