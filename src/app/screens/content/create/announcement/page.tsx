@@ -6,7 +6,6 @@ import {
   Button,
   Divider,
   Container,
-  Breadcrumbs,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -21,12 +20,6 @@ export default function AnnouncementContentPage() {
       <Box sx={{ py: 4 }}>
         <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box>
-            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-              <Link href="/screens/content" passHref style={{ textDecoration: 'none', color: 'text.secondary' }}>
-                Content
-              </Link>
-              <Typography color="text.primary">Create Announcement</Typography>
-            </Breadcrumbs>
             <Typography variant="h4" component="h1" gutterBottom>
               Create Announcement
             </Typography>

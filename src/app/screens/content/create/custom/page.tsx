@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Box, Typography, Button, Divider, Container, Breadcrumbs } from '@mui/material';
+import { Box, Typography, Button, Divider, Container } from '@mui/material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CustomForm } from '@/components/content/custom-form';
@@ -21,25 +21,6 @@ export default function CustomContentPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4 }}>
-        <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-          <Link href="/screens/dashboard" passHref>
-            <Typography color="inherit" sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, cursor: 'pointer' }}>
-              Dashboard
-            </Typography>
-          </Link>
-          <Link href="/screens/content" passHref>
-            <Typography color="inherit" sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, cursor: 'pointer' }}>
-              Content
-            </Typography>
-          </Link>
-          <Link href="/screens/content/custom" passHref>
-            <Typography color="inherit" sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' }, cursor: 'pointer' }}>
-              Custom Content
-            </Typography>
-          </Link>
-          <Typography color="text.primary">Create</Typography>
-        </Breadcrumbs>
-        
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h4" component="h1">
             Create Custom Content

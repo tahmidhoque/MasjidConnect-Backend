@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/content-helper';
 import { ContentTypeTable } from '@/components/content/table/ContentTypeTable';
 import { useContentCreation } from '@/components/content/ContentCreationContext';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import PageHeader from '@/components/layouts/page-header';
 
 // Define interface for 99 Names of Allah content items
 interface AsmaAlHusnaItem {
@@ -201,6 +202,7 @@ export default function AsmaAlHusnaPage() {
   
   return (
     <Container maxWidth="xl">
+      <PageHeader title="99 Names of Allah" />
       <Box sx={{ py: 4 }}>
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>

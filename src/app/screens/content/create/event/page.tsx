@@ -11,7 +11,6 @@ import {
   Paper,
   Divider,
   IconButton,
-  Breadcrumbs,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -26,12 +25,6 @@ export default function EventContentPage() {
       <Box sx={{ py: 4 }}>
         <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box>
-            <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 1 }}>
-              <Link href="/screens/content" passHref style={{ textDecoration: 'none', color: 'text.secondary' }}>
-                Content
-              </Link>
-              <Typography color="text.primary">Create Event</Typography>
-            </Breadcrumbs>
             <Typography variant="h4" component="h1" gutterBottom>
               Create Event
             </Typography>

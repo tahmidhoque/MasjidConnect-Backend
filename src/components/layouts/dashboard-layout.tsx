@@ -40,6 +40,7 @@ import ClientOnly from '@/components/ClientOnly';
 import { clearUserData } from '@/lib/auth-client';
 import PageHeader from './page-header';
 import { useUnsavedChanges } from '@/contexts/UnsavedChangesContext';
+import Breadcrumbs from './breadcrumbs';
 
 const drawerWidth = 280;
 
@@ -625,6 +626,7 @@ export default function DashboardLayout({
 
         {/* Main content area */}
         <Container maxWidth="lg">
+          <Breadcrumbs />
           {pageContent}
         </Container>
       </Box>
